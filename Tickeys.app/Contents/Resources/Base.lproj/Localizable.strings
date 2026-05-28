@@ -1,18 +1,41 @@
 /*
-  Localizable.strings
-  TickeysGUI
-
-  Created by Ying on 9/18/15.
-  Copyright © 2015 YingDev.com. All rights reserved.
+  Localizable.strings (English)
+  Tickeys Redux
 */
-"Tickeys_Running" = "Tickeys is running.";
-"press_qaz123" = "Press QAZ123 to open preferences.";
-"ax_tip" = "To run Tickeys, you MUST add Tickeys.app to `System Preferences > Security & Privacy > Accessibility` list.";
-"quit" = "Quit";
-"doneWithThis" = "Continue";
-"newVersion" = "New Version Available!";
-"check_update_url" = "http://www.yingdev.com/projects/latestVersion?product=Tickeys_0.4.0&lang=en-US";
+
+/* Menu */
+"sound_scheme" = "Sound Scheme";
+"volume" = "Volume";
+"pitch" = "Pitch";
+"quit_tickeys" = "Quit Tickeys Redux";
+
+/* Volume labels */
+"vol_25" = "25%";
+"vol_50" = "50%";
+"vol_75" = "75%";
+"vol_100" = "100%";
+
+/* Pitch labels */
+"pitch_05" = "0.5×";
+"pitch_075" = "0.75×";
+"pitch_10" = "1.0×";
+"pitch_15" = "1.5×";
+"pitch_20" = "2.0×";
+
+/* Scheme names */
 "bubble" = "Bubble";
 "typewriter" = "Typewriter";
 "mechanical" = "Mechanical";
 "sword" = "Sword";
+"drum" = "Drum";
+"cherry_g80_3000" = "Cherry G80-3000";
+"cherry_g80_3494" = "Cherry G80-3494";
+"tickeys_fingertip" = "Fingertip";
+
+/* Console */
+"launching" = "Tickeys Redux launching…";
+"running" = "Tickeys Redux running.";
+
+/* Permissions */
+"permission_title" = "Input Monitoring Required";
+"permission_message" = "Tickeys Redux needs Input Monitoring permission to detect keypresses for sound effects.\n\nGrant permission in System Settings → Privacy & Security → Input Monitoring.";

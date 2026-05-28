@@ -45,7 +45,7 @@ define_class!(
         fn did_finish_launching(&self, _notification: &NSNotification) {
             let mtm = self.mtm();
 
-            println!("Tickeys Redux launching...");
+            println!("{}", nsstring_to_string(&l10n_str("launching")));
 
             let (audio_tx, _worker) =
                 tickeys::spawn_audio_worker().expect("failed to start audio worker");
@@ -66,7 +66,7 @@ define_class!(
 
             AppDelegate::start_keyboard_monitor();
             settings_ui::setup_menu(mtm, ptr);
-            println!("Tickeys Redux running.");
+            println!("{}", nsstring_to_string(&l10n_str("running")));
         }
 
         #[unsafe(method(applicationWillTerminate:))]

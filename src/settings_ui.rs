@@ -16,8 +16,19 @@ static mut MENU_TICKEYS: *mut Tickeys = core::ptr::null_mut();
 static mut MENU_ITEM: *mut NSStatusItem = core::ptr::null_mut();
 
 // Volume tags: 0=25%, 1=50%, 2=75%, 3=100%
-const VOL_VALUES: [f32; 4] = [0.25, 0.5, 0.75, 1.0];
-const PITCH_VALUES: [f32; 5] = [0.5, 0.75, 1.0, 1.5, 2.0];
+const VOL_KEYS: [(&str, f32); 4] = [
+    ("vol_25", 0.25),
+    ("vol_50", 0.5),
+    ("vol_75", 0.75),
+    ("vol_100", 1.0),
+];
+const PITCH_KEYS: [(&str, f32); 5] = [
+    ("pitch_05", 0.5),
+    ("pitch_075", 0.75),
+    ("pitch_10", 1.0),
+    ("pitch_15", 1.5),
+    ("pitch_20", 2.0),
+];
 
 // ── MenuHandler ──────────────────────────────────────────────────────────────
 
@@ -50,8 +61,8 @@ define_class!(
         #[unsafe(method(setVolume:))]
         fn set_volume(&self, sender: &NSMenuItem) {
             let idx = sender.tag() as usize;
-            if idx >= VOL_VALUES.len() { return; }
-            let vol = VOL_VALUES[idx];
+            if idx >= VOL_KEYS.len() { return; }
+            let vol = VOL_KEYS[idx].1;
 
             unsafe { if !MENU_TICKEYS.is_null() { (*MENU_TICKEYS).set_volume(vol); } }
             save_float("audio_volume", vol);
@@ -62,8 +73,8 @@ define_class!(
         #[unsafe(method(setPitch:))]
         fn set_pitch(&self, sender: &NSMenuItem) {
             let idx = sender.tag() as usize;
-            if idx >= PITCH_VALUES.len() { return; }
-            let pitch = PITCH_VALUES[idx];
+            if idx >= PITCH_KEYS.len() { return; }
+            let pitch = PITCH_KEYS[idx].1;
 
             unsafe { if !MENU_TICKEYS.is_null() { (*MENU_TICKEYS).set_pitch(pitch); } }
             save_float("audio_pitch", pitch);
@@ -88,12 +99,13 @@ fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker
         // Scheme submenu
         let si = NSMenuItem::initWithTitle_action_keyEquivalent(
             NSMenuItem::alloc(mtm),
-            &NSString::from_str("Sound Scheme"), None, &NSString::from_str(""),
+            &l10n_str("sound_scheme"), None, &NSString::from_str(""),
         );
         let sm = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(""));
         for (i, scheme) in schemes.iter().enumerate() {
             let cm = if scheme.name == pref_scheme { "\u{2713} " } else { "  " };
-            let title = format!("{}{}", cm, scheme.display_name);
+            let disp = nsstring_to_string(&l10n_str(&scheme.name));
+            let title = format!("{}{}", cm, disp);
             let mi = NSMenuItem::initWithTitle_action_keyEquivalent(
                 NSMenuItem::alloc(mtm), &NSString::from_str(&title),
                 Some(sel!(changeScheme:)), &NSString::from_str(""),
@@ -108,11 +120,12 @@ fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker
         // Volume submenu
         let vi = NSMenuItem::initWithTitle_action_keyEquivalent(
             NSMenuItem::alloc(mtm),
-            &NSString::from_str("Volume"), None, &NSString::from_str(""),
+            &l10n_str("volume"), None, &NSString::from_str(""),
         );
         let vm = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(""));
-        for (i, (label, v)) in [("25%", 0.25f32), ("50%", 0.5), ("75%", 0.75), ("100%", 1.0)].iter().enumerate() {
+        for (i, (key, v)) in VOL_KEYS.iter().enumerate() {
             let cm = if (*v - pref_vol).abs() < 0.01 { "\u{2713} " } else { "  " };
+            let label = nsstring_to_string(&l10n_str(key));
             let title = format!("{}{}", cm, label);
             let mi = NSMenuItem::initWithTitle_action_keyEquivalent(
                 NSMenuItem::alloc(mtm), &NSString::from_str(&title),
@@ -128,11 +141,12 @@ fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker
         // Pitch submenu
         let pi = NSMenuItem::initWithTitle_action_keyEquivalent(
             NSMenuItem::alloc(mtm),
-            &NSString::from_str("Pitch"), None, &NSString::from_str(""),
+            &l10n_str("pitch"), None, &NSString::from_str(""),
         );
         let pm = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(""));
-        for (i, (label, p)) in [("0.5x", 0.5f32), ("0.75x", 0.75), ("1.0x", 1.0), ("1.5x", 1.5), ("2.0x", 2.0)].iter().enumerate() {
+        for (i, (key, p)) in PITCH_KEYS.iter().enumerate() {
             let cm = if (*p - pref_pitch).abs() < 0.01 { "\u{2713} " } else { "  " };
+            let label = nsstring_to_string(&l10n_str(key));
             let title = format!("{}{}", cm, label);
             let mi = NSMenuItem::initWithTitle_action_keyEquivalent(
                 NSMenuItem::alloc(mtm), &NSString::from_str(&title),
@@ -149,7 +163,7 @@ fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker
         menu.addItem(&NSMenuItem::separatorItem(mtm));
         let q = NSMenuItem::initWithTitle_action_keyEquivalent(
             NSMenuItem::alloc(mtm),
-            &NSString::from_str("Quit Tickeys"),
+            &l10n_str("quit_tickeys"),
             Some(sel!(terminate:)), &NSString::from_str("q"),
         );
         menu.addItem(&q);
