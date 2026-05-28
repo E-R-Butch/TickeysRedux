@@ -3,7 +3,7 @@
 ## v1.1 — 体验补完
 
 ### 抑制系统警告音
-删除键在边界时 macOS 的系统蜂鸣声和 Tickeys 音效同时响。播放音效前临时将 `com.apple.sound.beep.volume` 设为 0，播放后延迟恢复。
+删除键在输入框边界或 Finder 不可操作时，macOS 系统蜂鸣声和 Tickeys 打字音同时触发，两个声音叠在一起。需要找到干净的抑制方案。
 
 ### 开机自启
 菜单栏增加 "Launch at Login" 开关，写入 `~/Library/LaunchAgents/com.tickeys.redux.plist` 实现。无需 helper app。
