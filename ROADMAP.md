@@ -28,8 +28,22 @@
 ### 音效预览
 菜单中 hover 方案时播放一次示范音。
 
-### 专注模式联动
-检测 macOS Focus Mode 状态（`NSDistributedNotificationCenter` 监听 `com.apple.notification.center.focusModeActive`）。开启专注时自动静音或降至最低音量，退出时恢复。尊重系统设计约定，不打断用户上下文。
+### 系统遵从
+
+Tickeys 作为常驻后台应用，应在以下场景自动调整行为。用户可在设置面板中逐项开关。
+
+| 场景 | 行为 | 检测方式 |
+|------|------|----------|
+| Focus Mode 开启 | 自动静音，退出时恢复 | `NSDistributedNotificationCenter` → `com.apple.notification.center.focusModeActive` |
+| 屏幕锁定 | 静音 | `CGSessionCopyCurrentUserHasActiveScreenLock` 轮询或 Darwin notify |
+| 电池供电 | 降低音频采样率，拉长按键间隔 | IOKit `IOPSNotification` 电源源变更 |
+| 通话进行中 | Duck 音量（降低 80%）| `AVAudioSession` 音频中断通知或 `AudioObjectGetPropertyData` |
+| 耳机拔出 | 不自动切回扬声器播放 | `AudioHardware` 默认输出设备变更回调 |
+| 全屏/演示模式 | 静音 | `NSWorkspace.activeSpaceDidChange` + 检测全屏 App |
+| **睡眠/唤醒** | 暂停/恢复键盘监听 | 已实现（`iokit.rs` 电源事件） |
+| **暗色模式** | 菜单栏图标自适应 | 已实现（NSStatusBar 自动跟随系统） |
+
+设计原则：不打断用户，不抢系统焦点，不在不该出声的时候出声。
 
 ### 自定义音效导入
 "Import WAV…" → NSOpenPanel → 复制到 `~/Library/Application Support/Tickeys Redux/`。导入时允许用户指定按键类型：普通按键、Space、Enter、Backspace，自动生成 `key_audio_map` 映射。也支持导入整套方案（多个 WAV + 映射配置）。
