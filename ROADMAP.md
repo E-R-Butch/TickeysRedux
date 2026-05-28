@@ -31,6 +31,45 @@
 ### 方案分享
 将自定义方案导出为 `.tkrx` 包（JSON + WAV 的 zip），拖入菜单栏即可导入。
 
+### 更多语言
+已有 EN / 简体中文。欢迎社区贡献：
+
+- 日本語（ja）
+- 한국어（ko）
+- 繁體中文（zh-Hant）
+
+只需翻译 `Localizable.strings`（约 30 行），无需改代码。
+
+---
+
+## v2.0 — 跨平台
+
+macOS 版本成熟后，将核心音频引擎抽离为平台无关库，各平台对接原生输入/UI 层。
+
+| 层 | macOS (当前) | Linux | Windows |
+|---|---|---|---|
+| 键盘监听 | CGEventTap | evdev / X11 | Win32 raw input |
+| 菜单栏 UI | objc2 NSStatusBar | libappindicator / kde tray | Win32 tray icon |
+| 系统事件 | IOKit 电源监控 | 可砍掉 | 可砍掉 |
+| 音频 | rodio（已跨平台） | 无需改 | 无需改 |
+
+`src/tickeys.rs` 已是纯平台无关代码，不依赖 AppKit/CoreFoundation。跨平台工作的核心是将 `event_tap.rs` 和 `settings_ui.rs` 做 feature-gate 拆分：
+
+```
+src/
+├── tickeys.rs          # 平台无关
+├── platform/
+│   ├── macos/
+│   │   ├── input.rs    # CGEventTap
+│   │   └── ui.rs       # NSStatusBar
+│   ├── linux/
+│   │   ├── input.rs    # evdev
+│   │   └── ui.rs       # libappindicator
+│   └── windows/
+│       ├── input.rs    # Win32
+│       └── ui.rs       # Win32 tray
+```
+
 ---
 
 ## 不做
