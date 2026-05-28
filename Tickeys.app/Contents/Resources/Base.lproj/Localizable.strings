@@ -28,8 +28,8 @@
 "mechanical" = "Mechanical";
 "sword" = "Sword";
 "drum" = "Drum";
-"cherry_g80_3000" = "Cherry G80-3000";
-"cherry_g80_3494" = "Cherry G80-3494";
+"Cherry_G80_3000" = "Cherry G80-3000";
+"Cherry_G80_3494" = "Cherry G80-3494";
 "tickeys_fingertip" = "Fingertip";
 
 /* Console */

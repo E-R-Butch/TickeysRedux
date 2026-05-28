@@ -28,8 +28,8 @@
 "mechanical" = "机械键盘";
 "sword" = "刀剑";
 "drum" = "架子鼓";
-"cherry_g80_3000" = "樱桃 G80-3000";
-"cherry_g80_3494" = "樱桃 G80-3494";
+"Cherry_G80_3000" = "樱桃 G80-3000";
+"Cherry_G80_3494" = "樱桃 G80-3494";
 "tickeys_fingertip" = "指尖";
 
 /* Console */
