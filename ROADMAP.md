@@ -22,9 +22,6 @@
 ### 按 App 分配音效
 不是简单的排除/不排除，而是不同应用自动切换不同方案：Slack → Bubble，Terminal → Typewriter，VS Code → Cherry。CGEventTap 取目标进程 bundle ID，在用户配置的映射表中查找对应方案。
 
-### 随机音调偏移
-同一 keycode 永远播同一 WAV 有机械重复感。播放路径上加 ±3% 随机 pitch jitter，模拟键间差异。用户已设 pitch > 1.0 时不生效。
-
 ### 抑制系统警告音
 删除键在边界时 macOS 蜂鸣声和 Tickeys 音效同时响。
 
