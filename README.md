@@ -2,6 +2,8 @@
 
 > Mechanical keyboard sound effects for macOS. Instant audio feedback for every keystroke.
 
+[English](README.md) | [中文](README_zh-CN.md)
+
 Fork of [Tickeys](https://github.com/yingDev/Tickeys) by 应元东 — ported to arm64 macOS with modern Rust, zero legacy dependencies.
 
 ## What's New in v1.0.0
