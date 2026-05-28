@@ -4,6 +4,8 @@
 
 Fork 自 [Tickeys](https://github.com/yingDev/Tickeys)（应元东） — 移植至 arm64 macOS，使用现代 Rust，零遗留依赖。
 
+> **⚠️ 本项目仅支持 Apple Silicon（arm64）Mac。不兼容 Intel Mac，Intel 用户请使用 [原版 Tickeys](https://github.com/yingDev/Tickeys)。**
+
 [English](README.md) | 中文
 
 ## v1.0.0 更新

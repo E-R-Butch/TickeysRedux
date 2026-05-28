@@ -6,6 +6,8 @@
 
 Fork of [Tickeys](https://github.com/yingDev/Tickeys) by 应元东 — ported to arm64 macOS with modern Rust, zero legacy dependencies.
 
+> **⚠️ This project targets Apple Silicon (arm64) only. It does not run on Intel Macs. Intel users should use the [original Tickeys](https://github.com/yingDev/Tickeys) instead.**
+
 ## What's New in v1.0.0
 
 | | Original | Redux |
