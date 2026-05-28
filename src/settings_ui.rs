@@ -1,360 +1,234 @@
-extern crate objc;
-
-use super::consts::*;
-use super::cocoa_util::*;
-use pref::*;
-use core_graphics::*;
-use tickeys::Tickeys;
-use std::sync::{ONCE_INIT, Once};
-
-use objc::runtime::*;
-use cocoa::base::{class,id,nil};
-use cocoa::foundation::NSString;
-use cocoa::appkit::NSApp;
-
-// naive way of make this a singleton
-static mut SHOWING_GUI:bool = false;
-
-
-#[allow(non_snake_case)]
-#[allow(unused_variables)]
-pub trait SettingsController //<NSWindowDelegate, NSTableViewDelegate, NSTableViewDataSource>
-{
-	fn get_instance(_: Self, ptr_to_app: *mut Tickeys) -> id
-	{
-		Self::__register_objc_class_once();
-
-	    unsafe
-	    {
-	    	if SHOWING_GUI { return nil };
-			
-			let nib_name = NSString::alloc(nil).init_str("Settings");
-			let inst: id = msg_send![class(stringify!(SettingsController)), alloc];
-	       	let inst: id = msg_send![inst, initWithWindowNibName: nib_name];
-	       	inst.retain();
-
-	       	let _:id = msg_send![inst, setUser_data: ptr_to_app];
-			let _: id = msg_send![inst, showWindow: nil];
-
-
-			SHOWING_GUI = true;
-	       	inst
-    	}
-	}
-
-	fn __register_objc_class_once()
-	{
-		static REGISTER_APPDELEGATE: Once = ONCE_INIT;
-		REGISTER_APPDELEGATE.call_once(||
-		{
-			println!("SettingsController::__register_objc_class_once");
-			let superCls = objc::runtime::Class::get("NSWindowController").unwrap();
-			let mut decl = objc::declare::ClassDecl::new(superCls, stringify!(SettingsController)).unwrap();
-
-			decl_prop!(decl, usize, user_data);
-			decl_prop!(decl, id, popup_audio_scheme);
-			decl_prop!(decl, id, slide_volume);
-			decl_prop!(decl, id, slide_pitch);
-			decl_prop!(decl, id, label_version);
-			decl_prop!(decl, id, filterListTable);
-
-			unsafe
-			{
-				//methods
-				decl.add_method(sel!(quit:), Self::quit_ as extern fn(&mut Object, Sel, id));
-				decl.add_method(sel!(value_changed:), Self::value_changed_ as extern fn(&mut Object, Sel, id));
-				decl.add_method(sel!(follow_link:), Self::follow_link_ as extern fn(&mut Object, Sel, id));
-				decl.add_method(sel!(windowWillClose:), Self::windowWillClose as extern fn(&Object, Sel, id));
-				decl.add_method(sel!(windowDidLoad), Self::windowDidLoad as extern fn(&mut Object, Sel));
-				decl.add_method(sel!(tableView:shouldEditTableColumn:row:), Self::tableViewShouldEditTableColumnRow as extern fn(&mut Object, Sel, id, id, i32) -> bool);
-
-				decl.add_method(sel!(btnAddClicked:), Self::btnAddClicked as extern fn(&mut Object, Sel, id));
-				decl.add_method(sel!(btnRemoveClicked:), Self::btnRemoveClicked as extern fn(&mut Object, Sel, id));
-
-
-				//tableViewSource & tableViewDelegate
-				decl.add_method(sel!(numberOfRowsInTableView:), Self::numberOfRowsInTableView as extern fn(&mut Object, Sel, id)->i32);
-				decl.add_method(sel!(tableView:objectValueForTableColumn:row:), Self::tableViewObjectValueForTableColumn as extern fn(&mut Object, Sel, id, id, i32)->id);
-
-			}
-
-			decl.register();
-		});
-	}
-
-	extern fn windowDidLoad(this: &mut Object, _cmd: Sel)
-	{
-		println!("windowDidLoad");
-		unsafe
-		{
-			let window: id = msg_send![this, window];
-
-			//hide window btns
-			let btnMin: id = msg_send![window, standardWindowButton:1];
-			let _: id = msg_send![btnMin, setHidden: true];
-			let btnZoom: id = msg_send![window, standardWindowButton:2];
-			let _: id = msg_send![btnZoom, setHidden: true];
-
-			let _: id = msg_send![window, setLevel: CGWindowLevelForKey(CGWindowLevelKey::kCGFloatingWindowLevelKey)];
-
-			Self::load_values(this);
-		}
-
-	}
-
-	extern fn quit_(this: &mut Object, _cmd: Sel, sender: id)
-	{
-		println!("Quit");
-		app_terminate();
-	}
-
-	extern fn follow_link_(this: &mut Object, _cmd: Sel, sender: id)
-	{
-		unsafe
-		{
-			let tag:i64 = msg_send![sender, tag];
-			let url = match tag
-			{
-				0 => WEBSITE,
-				1 => DONATE_URL,
-				_ => panic!("SettingsController::follow_link_")
-			};
-
-			let workspace: id = msg_send![class("NSWorkspace"), sharedWorkspace];
-			let url:id = msg_send![class("NSURL"),
-			URLWithString: NSString::alloc(nil).init_str(url)];
-
-			msg_send![workspace, openURL: url]
-		}
-	}
-
-	extern fn value_changed_(this: &mut Object, _cmd:Sel, sender: id)
-	{
-		println!("SettingsController::value_changed_");
-
-		const TAG_POPUP_SCHEME: i64 = 0;
-		const TAG_SLIDE_VOLUME: i64 = 1;
-		const TAG_SLIDE_PITCH: i64 = 2;
-
-		unsafe
-		{
-			let user_defaults: id = msg_send![class("NSUserDefaults"), standardUserDefaults];
-			let tickeys_ptr:&mut Tickeys = msg_send![this, user_data];
-			let tag:i64 = msg_send![sender, tag];
-
-			match tag
-			{
-				TAG_POPUP_SCHEME =>
-				{
-
-					let value:i32 = msg_send![sender, indexOfSelectedItem];
-
-					let sch;// = &schemes[value as usize];
-					{
-						let schemes = tickeys_ptr.get_schemes();//= load_audio_schemes();
-						sch = schemes[value as usize].name.clone();
-					}
-
-
-					let scheme_dir = "data/".to_string() + &sch;//.to_string();
-					//scheme_dir.push_str(&sch.name);
-					tickeys_ptr.load_scheme(&get_res_path(&scheme_dir), &sch);
-
-					let _:id = msg_send![user_defaults,
-						setObject: NSString::alloc(nil).init_str(sch.as_ref())
-						forKey: NSString::alloc(nil).init_str("audio_scheme")];
-				},
-
-				TAG_SLIDE_VOLUME =>
-				{
-					let value:f32 = msg_send![sender, floatValue];
-					tickeys_ptr.set_volume(value);
-
-					let _:id = msg_send![user_defaults, setFloat: value
-						forKey: NSString::alloc(nil).init_str("volume")];
-				},
-
-				TAG_SLIDE_PITCH =>
-				{
-					let mut value:f32 = msg_send![sender, floatValue];
-					if value > 1f32
-					{
-						//just map [1, 1.5] -> [1, 2]
-						value = value * (2.0f32/1.5f32);
-					}
-					tickeys_ptr.set_pitch(value);
-
-					let _:id = msg_send![user_defaults, setFloat: value
-						forKey: NSString::alloc(nil).init_str("pitch")];
-				}
-
-				_ => {panic!("WTF");}
-			}
-		}
-
-	}
-
-	extern fn windowWillClose(this: &Object, _cmd: Sel, note: id)
-	{
-		println!("SettingsController::windowWillClose");
-		unsafe
-		{
-			let app_ptr: *mut Tickeys = msg_send![this, user_data];
-			SHOWING_GUI = false;
-
-			let user_defaults: id = msg_send![class("NSUserDefaults"), standardUserDefaults];
-			let _:id = msg_send![user_defaults, synchronize];
-			let _:id = msg_send![this, release];
-		}
-	}
-
-	extern fn btnAddClicked(this: &mut Object, _cmd: Sel, sender: id)
-	{
-		println!("Add Item");
-		unsafe
-		{
-			let open: id = msg_send![class("NSOpenPanel"), openPanel];
-			let apps_dir: id = msg_send![class("NSURL"), URLWithString: nsstr("/Applications")];
-			let allowed_types: id = msg_send![class("NSMutableArray"), arrayWithCapacity:2];
-			let _: id = msg_send![allowed_types, addObject: nsstr("app")];
-
-			let _: id = msg_send![open, setDirectoryURL: apps_dir];
-			let _: id = msg_send![open, setAllowedFileTypes: allowed_types];
-			let _: id = msg_send![open, setAllowsMultipleSelection: true];
-
-			let ret: i32 = msg_send![open, runModal];
-			if ret == 1 //Ok 
-			{
-				let files: id = msg_send![open, URLs];
-				let n: i32 = msg_send![files, count];
-
-				let filterList: id = Self::filterList();
-				for i in 0..n 
-				{
-					let appName: id = nsurl_filename(msg_send![files, objectAtIndex: i]);
-
-					let contains: bool = msg_send![filterList, containsObject: appName];
-					if !contains
-					{
-						let _: id = msg_send![filterList, addObject: appName];
-					}
-				}
-
-				//reload table ddata
-				let filterListTable: id = msg_send![this, filterListTable];
-				let _: id = msg_send![filterListTable, reloadData];
-
-				//save 
-				let ud: id = msg_send![class("NSUserDefaults"), standardUserDefaults];
-				let _: id = msg_send![ud, setObject:filterList forKey: nsstr("FilterList")];
-			}
-		}
-	}
-
-	extern fn btnRemoveClicked(this: &mut Object, _cmd: Sel, sender: id)
-	{
-		println!("Remove Item");
-		unsafe
-		{
-			let filterList = Self::filterList();
-			let table: id = msg_send![this, filterListTable];
-
-			let selectedRow: i32 = msg_send![table, selectedRow];
-
-			if selectedRow >= 0 
-			{
-				let _: id = msg_send![filterList, removeObjectAtIndex:selectedRow];
-				let _: id = msg_send![table, reloadData];
-
-				let ud: id = msg_send![class("NSUserDefaults"), standardUserDefaults];
-				let _: id = msg_send![ud, setObject:filterList forKey: nsstr("FilterList")];
-			}
-		}
-	}
-
-	unsafe fn load_values(this: id)
-	{
-		println!("loadValues");
-		let app_ptr: &mut Tickeys = msg_send![this, user_data];
-		let user_defaults: id = msg_send![class("NSUserDefaults"), standardUserDefaults];
-		let popup_audio_scheme: id = msg_send![this, popup_audio_scheme];
-		let _: id = msg_send![popup_audio_scheme, removeAllItems];
-
-		let schemes = app_ptr.get_schemes();//load_audio_schemes();
-		let pref = Pref::load(schemes);
-
-		for i in 0..schemes.len()
-		{
-			let s = &schemes[i];
-
-			let _: id = msg_send![popup_audio_scheme, addItemWithTitle: l10n_str(&s.display_name)];
-			if  *s.name == pref.scheme
-			{
-				let _:id = msg_send![popup_audio_scheme, selectItemAtIndex:i];
-			}
-		}
-
-		let slide_volume: id = msg_send![this, slide_volume];
-		let _:id = msg_send![slide_volume, setFloatValue: pref.volume];
-
-		let slide_pitch: id = msg_send![this, slide_pitch];
-		let value =  if pref.pitch > 1f32
-		{
-			pref.pitch * (1.5f32/2.0f32)
-		} else
-		{
-			pref.pitch
-		};
-		let _:id = msg_send![slide_pitch, setFloatValue: value];
-
-		let label_version: id = msg_send![this, label_version];
-		let _:id = msg_send![label_version,
-			setStringValue: NSString::alloc(nil).init_str(format!("{}",CURRENT_VERSION).as_ref())];
-
-		//let _:id = msg_send![this, show]
-
-		println!("makeKeyAndOrderFront:");
-		let win:id = msg_send![this, window];
-		let _:id = msg_send![win, makeKeyAndOrderFront:nil];
-		let _:id = msg_send![NSApp(), activateIgnoringOtherApps:true];
-	}
-
-
-	//-(NSInteger)numberOfRowsInTableView:(NSTableView *)tableView
-	extern fn numberOfRowsInTableView(this: &mut Object, _cmd: Sel, tableView: id) -> i32
-	{
-		unsafe
-		{
-			msg_send![Self::filterList(), count]
-		}
-	}
-
-	fn filterList() -> id
-	{
-		unsafe
-		{
-			//strong coupling...
-			let appDelegate: id = msg_send![NSApp(), delegate];
-			msg_send![appDelegate, filterList]
-		}
-	}
-
-	//-(id)tableView:(NSTableView *)tableView objectValueForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row
-	extern fn tableViewObjectValueForTableColumn(this: &mut Object, _cmd: Sel, tableView: id, tableColumn: id, row: i32) -> id 
-	{
-		unsafe
-		{
-			msg_send![Self::filterList(), objectAtIndex: row]
-		}
-	}
-
-	//-(BOOL)tableView:(NSTableView *)tableView shouldEditTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row
-	extern fn tableViewShouldEditTableColumnRow(this: &mut Object, _cmd: Sel, tableView: id, tableColumn: id, row: i32) -> bool 
-	{
-		false
-	}
+//! Settings UI — menu bar with scheme/volume/pitch controls.
+//! Uses NSStatusBar item + NSMenu, with a MenuHandler target for actions.
+//! Menu is rebuilt on every action to keep checkmarks current.
+
+use objc2::{define_class, msg_send, sel, ClassType, MainThreadOnly};
+use objc2::rc::Retained;
+use objc2_app_kit::{NSMenu, NSMenuItem, NSStatusBar, NSStatusBarButton, NSStatusItem, NSVariableStatusItemLength};
+use objc2_foundation::{MainThreadMarker, NSObject, NSObjectProtocol, NSString, NSUserDefaults};
+
+use crate::cocoa_util::*;
+use crate::tickeys::{AudioScheme, Tickeys};
+
+static mut MENU_TICKEYS: *mut Tickeys = core::ptr::null_mut();
+// Store the NSStatusItem as a raw pointer so rebuild() can update its menu
+// without creating duplicate items.
+static mut MENU_ITEM: *mut NSStatusItem = core::ptr::null_mut();
+
+// Volume tags: 0=25%, 1=50%, 2=75%, 3=100%
+const VOL_VALUES: [f32; 4] = [0.25, 0.5, 0.75, 1.0];
+const PITCH_VALUES: [f32; 5] = [0.5, 0.75, 1.0, 1.5, 2.0];
+
+// ── MenuHandler ──────────────────────────────────────────────────────────────
+
+define_class!(
+    #[unsafe(super = NSObject)]
+    #[thread_kind = MainThreadOnly]
+    #[derive(Debug)]
+    struct MenuHandler;
+
+    unsafe impl NSObjectProtocol for MenuHandler {}
+
+    impl MenuHandler {
+        #[unsafe(method(changeScheme:))]
+        fn change_scheme(&self, sender: &NSMenuItem) {
+            let idx = sender.tag() as usize;
+            let schemes = load_schemes();
+            if idx >= schemes.len() { return; }
+            let name = &schemes[idx].name;
+
+            unsafe {
+                if !MENU_TICKEYS.is_null() {
+                    let dir = get_res_path(&format!("data/{}", name));
+                    (*MENU_TICKEYS).load_scheme(&dir, name);
+                }
+            }
+            save_string("audio_scheme", name);
+            rebuild(self, &schemes, self.mtm());
+        }
+
+        #[unsafe(method(setVolume:))]
+        fn set_volume(&self, sender: &NSMenuItem) {
+            let idx = sender.tag() as usize;
+            if idx >= VOL_VALUES.len() { return; }
+            let vol = VOL_VALUES[idx];
+
+            unsafe { if !MENU_TICKEYS.is_null() { (*MENU_TICKEYS).set_volume(vol); } }
+            save_float("audio_volume", vol);
+            let schemes = load_schemes();
+            rebuild(self, &schemes, self.mtm());
+        }
+
+        #[unsafe(method(setPitch:))]
+        fn set_pitch(&self, sender: &NSMenuItem) {
+            let idx = sender.tag() as usize;
+            if idx >= PITCH_VALUES.len() { return; }
+            let pitch = PITCH_VALUES[idx];
+
+            unsafe { if !MENU_TICKEYS.is_null() { (*MENU_TICKEYS).set_pitch(pitch); } }
+            save_float("audio_pitch", pitch);
+            let schemes = load_schemes();
+            rebuild(self, &schemes, self.mtm());
+        }
+    }
+);
+
+/// Rebuild the menu from scratch, setting checkmarks on the current selection.
+fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker) {
+    let pref_scheme = load_pref_scheme(schemes);
+    let pref_vol = load_pref_float("audio_volume");
+    let pref_pitch = load_pref_float("audio_pitch");
+
+    unsafe {
+        if MENU_ITEM.is_null() { return; }
+        let item: &NSStatusItem = &*MENU_ITEM;
+
+        let menu = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(""));
+
+        // Scheme submenu
+        let si = NSMenuItem::initWithTitle_action_keyEquivalent(
+            NSMenuItem::alloc(mtm),
+            &NSString::from_str("Sound Scheme"), None, &NSString::from_str(""),
+        );
+        let sm = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(""));
+        for (i, scheme) in schemes.iter().enumerate() {
+            let cm = if scheme.name == pref_scheme { "\u{2713} " } else { "  " };
+            let title = format!("{}{}", cm, scheme.display_name);
+            let mi = NSMenuItem::initWithTitle_action_keyEquivalent(
+                NSMenuItem::alloc(mtm), &NSString::from_str(&title),
+                Some(sel!(changeScheme:)), &NSString::from_str(""),
+            );
+            mi.setTag(i as isize);
+            mi.setTarget(Some(handler));
+            sm.addItem(&mi);
+        }
+        si.setSubmenu(Some(&sm));
+        menu.addItem(&si);
+
+        // Volume submenu
+        let vi = NSMenuItem::initWithTitle_action_keyEquivalent(
+            NSMenuItem::alloc(mtm),
+            &NSString::from_str("Volume"), None, &NSString::from_str(""),
+        );
+        let vm = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(""));
+        for (i, (label, v)) in [("25%", 0.25f32), ("50%", 0.5), ("75%", 0.75), ("100%", 1.0)].iter().enumerate() {
+            let cm = if (*v - pref_vol).abs() < 0.01 { "\u{2713} " } else { "  " };
+            let title = format!("{}{}", cm, label);
+            let mi = NSMenuItem::initWithTitle_action_keyEquivalent(
+                NSMenuItem::alloc(mtm), &NSString::from_str(&title),
+                Some(sel!(setVolume:)), &NSString::from_str(""),
+            );
+            mi.setTag(i as isize);
+            mi.setTarget(Some(handler));
+            vm.addItem(&mi);
+        }
+        vi.setSubmenu(Some(&vm));
+        menu.addItem(&vi);
+
+        // Pitch submenu
+        let pi = NSMenuItem::initWithTitle_action_keyEquivalent(
+            NSMenuItem::alloc(mtm),
+            &NSString::from_str("Pitch"), None, &NSString::from_str(""),
+        );
+        let pm = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(""));
+        for (i, (label, p)) in [("0.5x", 0.5f32), ("0.75x", 0.75), ("1.0x", 1.0), ("1.5x", 1.5), ("2.0x", 2.0)].iter().enumerate() {
+            let cm = if (*p - pref_pitch).abs() < 0.01 { "\u{2713} " } else { "  " };
+            let title = format!("{}{}", cm, label);
+            let mi = NSMenuItem::initWithTitle_action_keyEquivalent(
+                NSMenuItem::alloc(mtm), &NSString::from_str(&title),
+                Some(sel!(setPitch:)), &NSString::from_str(""),
+            );
+            mi.setTag(i as isize);
+            mi.setTarget(Some(handler));
+            pm.addItem(&mi);
+        }
+        pi.setSubmenu(Some(&pm));
+        menu.addItem(&pi);
+
+        // Quit
+        menu.addItem(&NSMenuItem::separatorItem(mtm));
+        let q = NSMenuItem::initWithTitle_action_keyEquivalent(
+            NSMenuItem::alloc(mtm),
+            &NSString::from_str("Quit Tickeys"),
+            Some(sel!(terminate:)), &NSString::from_str("q"),
+        );
+        menu.addItem(&q);
+
+        item.setMenu(Some(&menu));
+
+        std::mem::forget(sm);
+        std::mem::forget(vm);
+        std::mem::forget(pm);
+        // Note: item lives forever via MENU_ITEM, don't forget it here
+    }
 }
 
-impl SettingsController for id
-{
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+fn save_string(key: &str, val: &str) {
+    let ud = unsafe { NSUserDefaults::standardUserDefaults() };
+    let k = NSString::from_str(key);
+    let v = NSString::from_str(val);
+    unsafe { let _: () = msg_send![&ud, setObject: &*v forKey: &*k]; }
+}
+
+fn save_float(key: &str, val: f32) {
+    let ud = unsafe { NSUserDefaults::standardUserDefaults() };
+    let k = NSString::from_str(key);
+    unsafe { let _: () = msg_send![&ud, setFloat: val forKey: &*k]; }
+}
+
+// ── Public API ───────────────────────────────────────────────────────────────
+
+pub fn setup_menu(mtm: MainThreadMarker, tickeys_ptr: *mut Tickeys) {
+    unsafe { MENU_TICKEYS = tickeys_ptr; }
+
+    let schemes = load_schemes();
+    let handler: Retained<MenuHandler> = unsafe { msg_send![MenuHandler::alloc(mtm), init] };
+
+    // Create the status bar item once and store it.
+    // rebuild() will update its menu on subsequent calls.
+    unsafe {
+        let status_bar = NSStatusBar::systemStatusBar();
+        let item: Retained<NSStatusItem> = msg_send![&status_bar, statusItemWithLength: NSVariableStatusItemLength];
+        let button = item.button(mtm).expect("must have button");
+        button.setTitle(&NSString::from_str("\u{1F3B9}"));
+        let raw = &*item as *const NSStatusItem as *mut NSStatusItem;
+        MENU_ITEM = raw;
+        std::mem::forget(item);
+    }
+
+    rebuild(&handler, &schemes, mtm);
+    std::mem::forget(handler);
+}
+
+// ── Preferences loading ──────────────────────────────────────────────────────
+
+fn load_schemes() -> Vec<AudioScheme> {
+    let path = get_res_path("data/schemes.json");
+    let mut f = std::fs::File::open(&path).unwrap();
+    let mut s = String::new();
+    std::io::Read::read_to_string(&mut f, &mut s).unwrap();
+    serde_json::from_str(&s).unwrap()
+}
+
+fn load_pref_scheme(schemes: &[AudioScheme]) -> String {
+    load_pref_string("audio_scheme").unwrap_or_else(|| schemes[0].name.clone())
+}
+
+fn load_pref_string(key: &str) -> Option<String> {
+    unsafe {
+        let ud = NSUserDefaults::standardUserDefaults();
+        let k = NSString::from_str(key);
+        let val: Option<Retained<NSString>> = msg_send![&ud, stringForKey: &*k];
+        val.map(|s| s.to_string())
+    }
+}
+
+fn load_pref_float(key: &str) -> f32 {
+    unsafe {
+        let ud = NSUserDefaults::standardUserDefaults();
+        let k = NSString::from_str(key);
+        msg_send![&ud, floatForKey: &*k]
+    }
 }

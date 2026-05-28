@@ -1,7 +1,6 @@
-extern crate libc;
-use libc::*;
-use core_graphics::*;
-use core_foundation::*;
+use std::ffi::c_void;
+use crate::core_graphics::*;
+use crate::core_foundation::*;
 
 pub struct KeyboardMonitor
 {
@@ -16,11 +15,11 @@ impl KeyboardMonitor
 		unsafe
 		{
 			let event_tap = CGEventTapCreate(CGEventTapLocation::kCGHIDEventTap, 
-						CGEventTapPlacement::kCGHeadInsertEventTap, 
-						CGEventTapOptions::kCGEventTapOptionListenOnly,
-						CGEventMaskBit!(CGEventType::kCGEventKeyDown),
-						handler,
-						user_data);
+					CGEventTapPlacement::kCGHeadInsertEventTap, 
+					CGEventTapOptions::kCGEventTapOptionListenOnly,
+					CGEventMaskBit!(CGEventType::kCGEventKeyDown),
+					handler,
+					user_data);
 
 	        if event_tap == (0 as CFMachPortRef)
 	        {

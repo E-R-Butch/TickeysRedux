@@ -1,5 +1,4 @@
-fn main()
-{
-	println!("cargo:rustc-link-search=native=./SharedSupport");
-	println!("cargo:rustc-link-lib=dylib=alut.0");
+fn main() {
+    // arm64 port: no native dylib dependencies.
+    // Audio via rodio (CoreAudio backend).
 }

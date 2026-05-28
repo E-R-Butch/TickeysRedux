@@ -1,19 +1,21 @@
 [package]
-name = "Tickeys"
-version = "0.5.0"
-authors = ["应元东 <ying@yingDev.com>"]
-build = "build.rs"
-
+name = "tickeys-redux"
+version = "1.0.0"
+description = "Tickeys Redux — mechanical keyboard sound effects for macOS (arm64 native)"
+authors = ["应元东 <ying@yingDev.com>", "Sinclair Liu <@sinclair>"]
+edition = "2021"
 
 [dependencies]
-libc = "0.2.1"
-cocoa = "0.2.2"
-time = "0.1.33"
-objc = "0.1.8"
-hyper = "0.7.2"
-block = "0.1.4"
-rustc-serialize = "0.3.16"
-openal-rs = "0.1.1"
+libc = "0.2"
+objc2 = "0.6.0"
+objc2-foundation = { version = "0.3.0", features = ["NSURL"] }
+objc2-app-kit = { version = "0.3.0", features = ["NSMenu", "NSMenuItem", "NSStatusBar", "NSStatusBarButton", "NSStatusItem", "NSApplication", "NSButton", "NSView", "NSResponder", "NSWorkspace", "NSAlert"] }
+rodio = "0.20.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+ureq = { version = "3.3.0", features = ["json"] }
+crossbeam = "0.8"
 
-[dependencies.IOKit-sys]
-git = "https://github.com/yingDev/iokit-sys.git"
+[lib]
+name = "tickeys_lib"
+path = "src/tickeys.rs"
