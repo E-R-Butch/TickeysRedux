@@ -28,6 +28,9 @@
 ### 音效预览
 菜单中 hover 方案时播放一次示范音。
 
+### 专注模式联动
+检测 macOS Focus Mode 状态（`NSDistributedNotificationCenter` 监听 `com.apple.notification.center.focusModeActive`）。开启专注时自动静音或降至最低音量，退出时恢复。尊重系统设计约定，不打断用户上下文。
+
 ### 自定义音效导入
 "Import WAV…" → NSOpenPanel → 复制到 `~/Library/Application Support/Tickeys Redux/`。导入时允许用户指定按键类型：普通按键、Space、Enter、Backspace，自动生成 `key_audio_map` 映射。也支持导入整套方案（多个 WAV + 映射配置）。
 
