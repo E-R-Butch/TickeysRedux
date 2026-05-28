@@ -19,7 +19,7 @@ Fork of [Tickeys](https://github.com/yingDev/Tickeys) by 应元东 — ported to
 | **Settings** | Unfinished XIB window | 🎹 **Menu bar** — scheme/volume/pitch |
 | **Permissions** | None | **Input Monitoring** (native macOS prompt) |
 | **Update checker** | Built-in | **Removed** |
-| **macOS target** | 10.10+ | **14+** (tested on 26) |
+| **macOS target** | 10.10+ | **11+** (arm64 baseline) |
 
 ## Install
 
