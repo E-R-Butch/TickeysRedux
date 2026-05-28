@@ -32,7 +32,7 @@
 菜单栏图标外围一圈环形进度条。按键时进度递增，停止后衰减。连续爆打时环闭合+微光。NSStatusBarButton 高度仅 22px，需用 CoreGraphics 手绘弧线合成 NSImage。
 
 ### 菜单栏图标动态切换
-根据当前方案、静音状态、Focus Mode 切换菜单栏图标：Cherry→⌨️、Bubble→🫧、静音→🔇、专注→🌙。
+根据当前方案和静音状态切换菜单栏图标：Cherry→⌨️、Bubble→🫧、Sword→⚔️、静音→🔇。
 
 ### 系统遵从
 
