@@ -11,12 +11,16 @@
 - **按 App 排除** — 列表，勾选的应用不触发音效。CGEventTap 取目标进程 bundle ID 比对
 - **静音热键** — 快捷键录制控件，默认 `Ctrl+Option+Shift+M`
 - **About** — 版本号、作者、GitHub 链接、许可证
+- **日夜间模式** — NSStatusBar/NSMenu 已自动跟随系统。面板窗口需显式继承 `NSAppearance` 以支持 Dark Mode
 
 参考：`legacy/assets/TickeysGUI/` 原版 Xcode 项目的 XIB 布局。
 
 ---
 
 ## v1.2 — 音效增强
+
+### 按 App 分配音效
+不是简单的排除/不排除，而是不同应用自动切换不同方案：Slack → Bubble，Terminal → Typewriter，VS Code → Cherry。CGEventTap 取目标进程 bundle ID，在用户配置的映射表中查找对应方案。
 
 ### 随机音调偏移
 同一 keycode 永远播同一 WAV 有机械重复感。播放路径上加 ±3% 随机 pitch jitter，模拟键间差异。用户已设 pitch > 1.0 时不生效。
