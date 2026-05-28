@@ -8,6 +8,9 @@
 ### 全局静音热键
 `Ctrl+Option+Shift+M` 一键静音/取消。CGEventTap 已能捕获全局按键，hotkey 匹配加 mute toggle 即可。
 
+### 按 App 排除
+指定哪些应用不触发键盘音。CGEventTap 回调里取目标进程 bundle ID，排除列表存 NSUserDefaults。菜单 "Exclude App…" 列出运行中的应用，勾选即跳过。
+
 ### 音效预览
 菜单中 hover/选中方案时播放一次示范音。避免切方案后打字试音的来回操作。
 
