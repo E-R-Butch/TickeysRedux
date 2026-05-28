@@ -11,7 +11,6 @@ use objc2_foundation::{
 use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationDelegate};
 
 mod cocoa_util;
-mod consts;
 mod core_foundation;
 mod core_graphics;
 mod event_tap;

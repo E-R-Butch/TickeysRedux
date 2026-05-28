@@ -1,1 +1,8 @@
-target
+# Build artifacts
+target/
+
+# macOS
+.DS_Store
+
+# Hermes Agent
+.hermes/
