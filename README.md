@@ -1,65 +1,112 @@
-# Tickeys
-![Tickeys Icon](https://raw.githubusercontent.com/yingDev/Tickeys/master/.readme_images/icon.png)
+# Tickeys Redux
 
-<img src="https://raw.githubusercontent.com/yingDev/Tickeys/master/.readme_images/Tickeys%20new.png" width="128" height="128" />
-<br>(An alternative icon designed by [@WillStark](https://github.com/WillStark) )
+> Mechanical keyboard sound effects for macOS. Instant audio feedback for every keystroke.
 
-Instant audio feedback for typing. For macOS. 
+Fork of [Tickeys](https://github.com/yingDev/Tickeys) by 应元东 — ported to arm64 macOS with modern Rust, zero legacy dependencies.
 
-A demo for learning [Rust](https://www.rust-lang.org).
+## What's New in v1.0.0
 
-### Other versions:
-- Linux: [Tickeys-linux](https://github.com/BillBillBillBill/Tickeys-linux)
-- Windows: [Download](https://www.yingdev.com/Content/Projects/Tickeys_Win/Release/1.1.1/Tickeys1.1.1.rar)
+| | Original | Redux |
+|---|---|---|
+| **Architecture** | x86_64 | **arm64 native** |
+| **Audio engine** | OpenAL + libalut (.dylib) | **rodio** (pure Rust → CoreAudio) |
+| **UI framework** | cocoa 0.2 + XIB | **objc2 0.6** + NSStatusBar |
+| **Rust edition** | 2015 | **2021** |
+| **Settings** | Unfinished XIB window | 🎹 **Menu bar** — scheme/volume/pitch |
+| **Permissions** | None | **Input Monitoring** (native macOS prompt) |
+| **Update checker** | Built-in | **Removed** |
+| **macOS target** | 10.10+ | **14+** (tested on 26) |
 
-# Install
-  - brew cask
+## Install
+
+Download from [Releases](https://github.com/E-R-Butch/TickeysRedux/releases), or build from source:
+
 ```sh
-brew cask install tickeys && open /Applications/Tickeys.app
+git clone https://github.com/E-R-Butch/TickeysRedux.git
+cd TickeysRedux
+cargo build --release
 ```
-  - or download the [dmg](https://github.com/yingDev/Tickeys/releases/download/0.5.0/Tickeys-0.5.0-yosemite.dmg)
 
-# Screenshots
+Requires Rust 1.77+. Binary at `target/release/tickeys-redux`.
 
-<img src="https://raw.githubusercontent.com/yingDev/Tickeys/master/.readme_images/1.png" alt='sound effects' width=400/>
-<br/>
-<img src="https://raw.githubusercontent.com/yingDev/Tickeys/master/.readme_images/2.png" alt='black/white list' width=400/>
-<br/><br/>
-<a href='https://www.youtube.com/watch?v=XeqA-LU5IWg' target='_blank'>
-<img src="https://raw.githubusercontent.com/yingDev/Tickeys/master/.readme_images/video_thumb.png" alt='sound effects' width=400/>
-</a>
+## Usage
 
-# Add custom schemes
-0. locate the `data` directory in Finder: `Tickeys.app/Content/Resources/data/`
+1. Launch `Tickeys Redux.app`
+2. Grant **Input Monitoring** permission when the system prompt appears
+3. Click 🎹 in the menu bar to:
+   - Switch sound schemes (bubble, Cherry G80-3000/3494, drum, mechanical, sword, typewriter...)
+   - Adjust volume (25%/50%/75%/100%)
+   - Adjust pitch (0.5x–2.0x)
+4. Start typing — instant key sounds
 
-1. copy & paste an effect directory and rename the copy, eg.`drum` -> `myDrum`
+## Building the App Bundle
 
-2. open `schemes.json` and edit it by copy & paste the corresponding scheme entry; change the `name`  and `display_name` as needed. eg:
-	```json 
-	,{
-		"name": "myDrum",
-		"display_name": "My Drum",
-		"files": ["1.wav", "2.wav", "3.wav", "4.wav", "space.wav", "backspace.wav", "enter.wav"],
-		"non_unique_count": 4, 
-		"key_audio_map":{"36": 6, "49": 4, "51": 5}
-	},
-	```
-	- note:
-	 	* "name": value must be the same as your directory name
-	 	* "files": sound file list 
-	 	* "non_unique_count": first N items in `files` are auto mapped to keys
-	  	* "key_audio_map": mappings of keyCode to sound index in "files". eg. 36 == `enter`
-	 
-3. add/replace your `.wav` files; update & save the json file
-
-4. re-launch Tickeys. ("qaz123")
-
-## Deps （for development)
-* alut
-* openssl
 ```sh
-brew install freealut openssl
+cargo build --release
+
+# Create .app structure
+mkdir -p "Tickeys Redux.app/Contents/MacOS"
+mkdir -p "Tickeys Redux.app/Contents/Resources"
+cp target/release/tickeys-redux "Tickeys Redux.app/Contents/MacOS/"
+cp -R Tickeys.app/Contents/Resources/data "Tickeys Redux.app/Contents/Resources/"
+cp Tickeys.app/Contents/Resources/tickeys.icns "Tickeys Redux.app/Contents/Resources/"
+
+# Write Info.plist (LSUIElement = true for menu bar only, no Dock icon)
+cat > "Tickeys Redux.app/Contents/Info.plist" << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>tickeys-redux</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.tickeys.redux</string>
+    <key>CFBundleName</key>
+    <string>Tickeys Redux</string>
+    <key>CFBundleVersion</key>
+    <string>1.0.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>
+EOF
 ```
+
+## Custom Sound Schemes
+
+Add your own `.wav` files under `Resources/data/` and edit `schemes.json`:
+
+```json
+{
+    "name": "myScheme",
+    "display_name": "My Scheme",
+    "files": ["1.wav", "2.wav", "3.wav"],
+    "non_unique_count": 3,
+    "key_audio_map": {}
+}
+```
+
+## Tech Stack
+
+| Component | Library | Purpose |
+|---|---|---|
+| Audio | rodio 0.20 | WAV decode + playback via CoreAudio |
+| UI | objc2 0.6 | NSStatusBar, NSMenu, NSAlert |
+| Keyboard | CGEventTap (FFI) | Global key-down monitoring |
+| Concurrency | crossbeam 0.8 | Audio worker thread channel |
+| Config | serde + serde_json | Scheme definition parsing |
+| Prefs | NSUserDefaults | Persist scheme/volume/pitch |
+
+## Permissions
+
+Tickeys Redux uses `CGEventTapCreate` to listen for global key-down events. This requires **Input Monitoring** permission on macOS. The system prompt appears automatically on first launch. No Accessibility permission needed.
+
+Note: each `cargo build` changes the binary's ad-hoc code signature hash. Re-grant Input Monitoring permission after rebuilding. A proper Developer ID signature eliminates this.
 
 ## License
-* MIT
+
+MIT — original work by [应元东](https://github.com/yingDev), Redux port by [Sinclair](https://github.com/E-R-Butch).
