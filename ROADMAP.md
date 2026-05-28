@@ -29,7 +29,7 @@
 菜单中 hover 方案时播放一次示范音。
 
 ### 自定义音效导入
-"Import WAV…" → NSOpenPanel → 复制到 `~/Library/Application Support/Tickeys Redux/`。scheme 动态注册。导出同理（.tkrx 包：JSON + WAV 的 zip）。
+"Import WAV…" → NSOpenPanel → 复制到 `~/Library/Application Support/Tickeys Redux/`。导入时允许用户指定按键类型：普通按键、Space、Enter、Backspace，自动生成 `key_audio_map` 映射。也支持导入整套方案（多个 WAV + 映射配置）。
 
 ---
 
