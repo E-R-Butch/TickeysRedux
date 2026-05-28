@@ -1,47 +1,41 @@
 # Roadmap
 
-## v1.1 — 体验补完
+## v1.1 — 设置面板
 
-### 设置面板
-菜单栏增加 "Preferences…" 入口，打开设置窗口（NSPopover 或 NSWindow），承载以下内容：音量/音调滑杆（v1.2）、App 排除列表、开机自启开关、About（版本号、作者、GitHub 链接）。原版 `legacy/assets/TickeysGUI/` 的 XIB 布局可参考。
+用 NSPopover 或 NSWindow 实现完整设置面板，替代当前纯 NSMenu 子菜单。菜单栏保留方案快速切换 + 静音，"Preferences…" 打开面板。
 
-### 抑制系统警告音
-删除键在输入框边界或 Finder 不可操作时，macOS 系统蜂鸣声和 Tickeys 打字音同时触发，两个声音叠在一起。需要找到干净的抑制方案。
+面板内容：
 
-### 开机自启
-菜单栏增加 "Launch at Login" 开关，写入 `~/Library/LaunchAgents/com.tickeys.redux.plist` 实现。无需 helper app。
+- **音量 / 音调** — NSSlider 滑杆 + 可编辑输入框，滑杆在 25/50/75/100%（音量）和 0.5/1.0/1.5/2.0×（音调）点位吸附
+- **开机自启** — 勾选框，写入 `~/Library/LaunchAgents/`
+- **按 App 排除** — 列表，勾选的应用不触发音效。CGEventTap 取目标进程 bundle ID 比对
+- **静音热键** — 快捷键录制控件，默认 `Ctrl+Option+Shift+M`
+- **About** — 版本号、作者、GitHub 链接、许可证
 
-### 全局静音热键
-`Ctrl+Option+Shift+M` 一键静音/取消。CGEventTap 已能捕获全局按键，hotkey 匹配加 mute toggle 即可。
-
-### 按 App 排除
-指定哪些应用不触发键盘音。CGEventTap 回调里取目标进程 bundle ID，排除列表存 NSUserDefaults。菜单 "Exclude App…" 列出运行中的应用，勾选即跳过。
-
-### 音效预览
-菜单中 hover/选中方案时播放一次示范音。避免切方案后打字试音的来回操作。
+参考：`legacy/assets/TickeysGUI/` 原版 Xcode 项目的 XIB 布局。
 
 ---
 
 ## v1.2 — 音效增强
 
 ### 随机音调偏移
-同一 keycode 永远播同一 WAV 会让连续打字有机械重复感。在 playback 路径上对每次播放加 ±3% 随机 pitch jitter，模拟真实键盘的键间差异。仅在用户设置 pitch > 1.0 时不生效（用户已刻意调速）。
+同一 keycode 永远播同一 WAV 有机械重复感。播放路径上加 ±3% 随机 pitch jitter，模拟键间差异。用户已设 pitch > 1.0 时不生效。
 
-### 精准音量
-在设置面板中实现 NSSlider 滑杆 + 自由输入框，滑杆在 25/50/75/100% 点位吸附。音调同理（0.5/1.0/1.5/2.0× 吸附）。
+### 抑制系统警告音
+删除键在边界时 macOS 蜂鸣声和 Tickeys 音效同时响。
+
+### 音效预览
+菜单中 hover 方案时播放一次示范音。
+
+### 自定义音效导入
+"Import WAV…" → NSOpenPanel → 复制到 `~/Library/Application Support/Tickeys Redux/`。scheme 动态注册。导出同理（.tkrx 包：JSON + WAV 的 zip）。
 
 ---
 
-## v1.3 — 自定义
-
-### 自定义音效导入
-菜单 "Import WAV…"，通过 `NSOpenPanel` 选择文件，复制到 `~/Library/Application Support/Tickeys Redux/custom/`。scheme 动态注册，schemes.json 标记 `"source": "user"` 以区分内置/自定义。导出同理。
-
-### 方案分享
-将自定义方案导出为 `.tkrx` 包（JSON + WAV 的 zip），拖入菜单栏即可导入。
+## v1.3 — 社区
 
 ### 更多语言
-已有 EN / 简体中文。欢迎社区贡献：
+已有 EN / 简体中文。欢迎贡献：
 
 - 日本語（ja）
 - 한국어（ko）
@@ -49,34 +43,30 @@
 
 只需翻译 `Localizable.strings`（约 30 行），无需改代码。
 
+### 方案分享
+.tkrx 包拖入菜单栏即导入。社区可互相分享自定义方案。
+
 ---
 
 ## v2.0 — 跨平台
 
-macOS 版本成熟后，将核心音频引擎抽离为平台无关库，各平台对接原生输入/UI 层。
+macOS 版成熟后，将核心音频引擎（`src/tickeys.rs`）抽离为平台无关 crate，各平台对接原生输入/UI：
 
 | 层 | macOS (当前) | Linux | Windows |
 |---|---|---|---|
 | 键盘监听 | CGEventTap | evdev / X11 | Win32 raw input |
-| 菜单栏 UI | objc2 NSStatusBar | libappindicator / kde tray | Win32 tray icon |
-| 系统事件 | IOKit 电源监控 | 可砍掉 | 可砍掉 |
+| 系统托盘 | objc2 NSStatusBar | libappindicator | Win32 tray |
 | 音频 | rodio（已跨平台） | 无需改 | 无需改 |
-
-`src/tickeys.rs` 已是纯平台无关代码，不依赖 AppKit/CoreFoundation。跨平台工作的核心是将 `event_tap.rs` 和 `settings_ui.rs` 做 feature-gate 拆分：
 
 ```
 src/
 ├── tickeys.rs          # 平台无关
 ├── platform/
 │   ├── macos/
-│   │   ├── input.rs    # CGEventTap
-│   │   └── ui.rs       # NSStatusBar
+│   │   ├── input.rs
+│   │   └── ui.rs
 │   ├── linux/
-│   │   ├── input.rs    # evdev
-│   │   └── ui.rs       # libappindicator
 │   └── windows/
-│       ├── input.rs    # Win32
-│       └── ui.rs       # Win32 tray
 ```
 
 ---
@@ -85,18 +75,18 @@ src/
 
 | 功能 | 原因 |
 |------|------|
-| 更新检测 | 主动推送 break 用户注意力（已移除） |
-| 云端同步 | 本地工具不需要服务器依赖 |
-| 方案市场 | 过早社区化，vibe coding 项目不需要 |
-| 统计/遥测 | 不收集用户数据，永远不做 |
+| 更新检测 | 主动推送干扰用户（已移除） |
+| 云端同步 | 本地工具，不需要服务器 |
+| 方案市场 | 过早社区化 |
+| 统计/遥测 | 永远不收集数据 |
 | Intel 支持 | 原版 Tickeys 已覆盖 |
 
 ---
 
-## 技术债（需要时再清理）
+## 技术债
 
 | 项 | 说明 |
 |----|------|
-| 代码签名 | ad-hoc 每次 rebuild 需重授权，签名后消除 |
-| 公证 | 不公证则每次 Gatekeeper 弹窗需右键打开 |
-| objc2 API 废弃警告 | `msg_send!` 无逗号语法将在未来 Rust 版本失效 |
+| 代码签名 | ad-hoc 每次 rebuild 需重授权，正式签名后消除 |
+| 公证 | 未公证则 Gatekeeper 弹窗需右键打开 |
+| objc2 废弃语法 | `msg_send!` 无逗号语法将在未来 Rust 版本失效 |
