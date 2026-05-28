@@ -6,3 +6,4 @@ target/
 
 # Hermes Agent
 .hermes/
+*.wav.bak
