@@ -71,8 +71,9 @@ define_class!(
         #[unsafe(method(applicationWillTerminate:))]
         fn will_terminate(&self, _notification: &NSNotification) {
             unsafe {
-                if let Some(ptr) = TICKEYS_PTR.take() {
-                    drop(Box::from_raw(ptr));
+                let ptr = std::ptr::replace(&raw mut TICKEYS_PTR, None);
+                if let Some(p) = ptr {
+                    drop(Box::from_raw(p));
                 }
             }
         }

@@ -43,7 +43,7 @@ struct CFMessagePortContext {
     copyDescription: Option<extern "C" fn(*const c_void) -> CFStringRef>,
 }
 
-extern "C" {
+unsafe extern "C" {
     pub static kCFRunLoopDefaultMode: CFStringRef;
     pub static kCFRunLoopCommonModes: CFStringRef;
     pub static kCFAllocatorDefault: CFAllocatorRef;
@@ -57,7 +57,7 @@ extern "C" {
 }
 
 #[link(name = "CoreFoundation", kind = "framework")]
-extern "system" {
+unsafe extern "system" {
     pub fn CFRelease(cf: CFTypeRef);
 
     pub fn CFMachPortCreateRunLoopSource(

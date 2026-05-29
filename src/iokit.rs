@@ -22,7 +22,7 @@ pub const kIOMessageSystemHasPoweredOn: u32 = 0x3000000;
 // ── Functions ────────────────────────────────────────────────────────────────
 
 #[link(name = "IOKit", kind = "framework")]
-extern "system" {
+unsafe extern "system" {
     pub fn IORegisterForSystemPower(
         refcon: *mut c_void,
         notificationPort: *mut IONotificationPortRef,

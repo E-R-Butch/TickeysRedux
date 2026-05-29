@@ -162,7 +162,7 @@ macro_rules! CGEventMaskBit {
 pub const kCGEventMaskForAllEvents: u64 = !0;
 
 #[link(name = "CoreGraphics", kind = "framework")]
-extern "system" {
+unsafe extern "system" {
     pub fn CGEventTapCreate(
         tap: CGEventTapLocation,
         place: CGEventTapPlacement,
