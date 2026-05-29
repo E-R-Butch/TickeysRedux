@@ -1,6 +1,6 @@
 [package]
 name = "tickeys-redux"
-version = "1.0.1"
+version = "1.0.3"
 description = "Tickeys Redux — mechanical keyboard sound effects for macOS (arm64 native)"
 authors = ["应元东 <ying@yingDev.com>", "Sinclair Liu <@sinclair>"]
 edition = "2024"

@@ -175,5 +175,7 @@ unsafe extern "system" {
     pub fn CGEventGetIntegerValueField(event: CGEventRef, field: CGEventField) -> i64;
     pub fn CGEventTapEnable(tap: CFMachPortRef, enable: bool);
     pub fn CGEventTapIsEnabled(tap: CFMachPortRef) -> bool;
+    pub fn CGPreflightListenEventAccess() -> bool;
+    pub fn CGRequestListenEventAccess() -> bool;
     pub fn CGWindowLevelForKey(key: CGWindowLevelKey) -> i32;
 }

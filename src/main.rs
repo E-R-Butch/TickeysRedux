@@ -2,11 +2,11 @@
 
 use std::ffi::c_void;
 
-use objc2::{define_class, msg_send, sel, ClassType, MainThreadOnly};
+use objc2::{define_class, msg_send, ClassType, MainThreadOnly};
 use objc2::rc::{autoreleasepool, Retained};
-use objc2::runtime::ProtocolObject;
+use objc2::runtime::{AnyObject, ProtocolObject};
 use objc2_foundation::{
-    MainThreadMarker, NSNotification, NSObject, NSObjectProtocol, NSString,
+    MainThreadMarker, NSNotification, NSObject, NSObjectProtocol,
 };
 use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationDelegate};
 
@@ -28,6 +28,26 @@ use crate::tickeys::{AudioScheme, Tickeys};
 // ── Globals ──────────────────────────────────────────────────────────────────
 
 static mut TICKEYS_PTR: Option<*mut Tickeys> = None;
+static mut KEYBOARD_MONITOR: Option<crate::event_tap::KeyboardMonitor> = None;
+
+// CGEventTap callback — called on main run loop thread
+extern "C" fn handle_keyboard_event(
+    _proxy: CGEventTapProxy,
+    _etype: CGEventType,
+    event: CGEventRef,
+    _refcon: *mut c_void,
+) -> CGEventRef {
+    let keycode = unsafe {
+        CGEventGetIntegerValueField(event, CGEventField::kCGKeyboardEventKeycode)
+    } as u8;
+    unsafe {
+        if let Some(ptr) = TICKEYS_PTR {
+            let tickeys: &mut Tickeys = &mut *ptr;
+            tickeys.handle_keydown(keycode);
+        }
+    }
+    event
+}
 
 // ── AppDelegate ──────────────────────────────────────────────────────────────
 
@@ -63,7 +83,44 @@ define_class!(
             let ptr = Box::into_raw(tickeys_box);
             unsafe { TICKEYS_PTR = Some(ptr); }
 
-            AppDelegate::start_keyboard_monitor();
+            // Create keyboard monitor on main thread.
+            use crate::event_tap::KeyboardMonitor;
+            match KeyboardMonitor::new(handle_keyboard_event, std::ptr::null_mut()) {
+                Ok(monitor) => {
+                    unsafe { KEYBOARD_MONITOR = Some(monitor); }
+                    println!("KeyboardMonitor started");
+                }
+                Err(e) => {
+                    eprintln!("KeyboardMonitor failed: {}", e);
+                    // Show permission prompt
+                    let alert: Retained<AnyObject> = unsafe {
+                        let cls = objc2::runtime::AnyClass::get(
+                            std::ffi::CStr::from_bytes_with_nul(b"NSAlert\0").unwrap()
+                        ).unwrap();
+                        msg_send![msg_send![cls, alloc], init]
+                    };
+                    unsafe {
+                        let _: () = msg_send![&alert, setMessageText: &*nsstr("需要输入监控权限")];
+                        let _: () = msg_send![&alert, setInformativeText: &*nsstr("Tickeys Redux 需要「输入监控」权限才能检测按键。\n\n请在 系统设置 → 隐私与安全性 → 输入监控 中添加并启用 Tickeys Redux，然后重新启动。")];
+                        let _: () = msg_send![&alert, addButtonWithTitle: &*nsstr("打开系统设置")];
+                        let _: () = msg_send![&alert, addButtonWithTitle: &*nsstr("退出")];
+                        let response: isize = msg_send![&alert, runModal];
+                        if response == 1000 {
+                            let ws_cls = objc2::runtime::AnyClass::get(
+                                std::ffi::CStr::from_bytes_with_nul(b"NSWorkspace\0").unwrap()
+                            ).unwrap();
+                            let ws: *mut objc2::runtime::AnyObject = msg_send![ws_cls, sharedWorkspace];
+                            let url_str = nsstr("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent");
+                            let url_cls = objc2::runtime::AnyClass::get(
+                                std::ffi::CStr::from_bytes_with_nul(b"NSURL\0").unwrap()
+                            ).unwrap();
+                            let url: *mut objc2::runtime::AnyObject = msg_send![url_cls, URLWithString: &*url_str];
+                            let _: () = msg_send![ws, openURL: url];
+                        }
+                    }
+                    std::process::exit(0);
+                }
+            }
             settings_ui::setup_menu(mtm, ptr);
             println!("{}", nsstring_to_string(&l10n_str("running")));
         }
@@ -71,6 +128,8 @@ define_class!(
         #[unsafe(method(applicationWillTerminate:))]
         fn will_terminate(&self, _notification: &NSNotification) {
             unsafe {
+                // Drop keyboard monitor first (disables event tap)
+                KEYBOARD_MONITOR = None;
                 let ptr = std::ptr::replace(&raw mut TICKEYS_PTR, None);
                 if let Some(p) = ptr {
                     drop(Box::from_raw(p));
@@ -89,38 +148,6 @@ impl AppDelegate {
         std::io::Read::read_to_string(&mut file, &mut json_str)
             .expect("Failed to read schemes.json");
         serde_json::from_str(&json_str).expect("Failed to parse schemes.json")
-    }
-
-    fn start_keyboard_monitor() {
-        use crate::event_tap::KeyboardMonitor;
-
-        extern "C" fn handle_keyboard_event(
-            _proxy: CGEventTapProxy,
-            _etype: CGEventType,
-            event: CGEventRef,
-            _refcon: *mut c_void,
-        ) -> CGEventRef {
-            let keycode = unsafe {
-                CGEventGetIntegerValueField(event, CGEventField::kCGKeyboardEventKeycode)
-            } as u8;
-            unsafe {
-                if let Some(ptr) = TICKEYS_PTR {
-                    let tickeys: &mut Tickeys = &mut *ptr;
-                    tickeys.handle_keydown(keycode);
-                }
-            }
-            event
-        }
-
-        std::thread::spawn(move || {
-            match KeyboardMonitor::new(handle_keyboard_event, std::ptr::null_mut()) {
-                Ok(_monitor) => {
-                    println!("KeyboardMonitor started");
-                    unsafe { CFRunLoopRun(); }
-                }
-                Err(e) => eprintln!("KeyboardMonitor failed: {}", e),
-            }
-        });
     }
 }
 
