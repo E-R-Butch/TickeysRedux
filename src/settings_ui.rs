@@ -183,13 +183,13 @@ fn save_string(key: &str, val: &str) {
     let ud = unsafe { NSUserDefaults::standardUserDefaults() };
     let k = NSString::from_str(key);
     let v = NSString::from_str(val);
-    unsafe { let _: () = msg_send![&ud, setObject: &*v forKey: &*k]; }
+    unsafe { let _: () = msg_send![&ud, setObject: &*v, forKey: &*k]; }
 }
 
 fn save_float(key: &str, val: f32) {
     let ud = unsafe { NSUserDefaults::standardUserDefaults() };
     let k = NSString::from_str(key);
-    unsafe { let _: () = msg_send![&ud, setFloat: val forKey: &*k]; }
+    unsafe { let _: () = msg_send![&ud, setFloat: val, forKey: &*k]; }
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
