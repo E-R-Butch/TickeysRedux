@@ -14,6 +14,7 @@ pub type CFBooleanRef = *mut c_void;
 pub type CFIndex = i64;
 pub type CFDictionaryRef = *mut c_void;
 
+#[allow(non_snake_case)]
 #[repr(C)]
 pub struct CFDictionaryKeyCallBacks {
     pub version: CFIndex,
@@ -35,7 +36,8 @@ pub type CFMessagePortCallBack = extern "C" fn(
 ) -> CFDataRef;
 
 #[repr(C)]
-struct CFMessagePortContext {
+#[allow(non_snake_case, dead_code)]
+pub(crate) struct CFMessagePortContext {
     version: CFIndex,
     info: *mut c_void,
     retain: Option<extern "C" fn(*const c_void) -> *const c_void>,

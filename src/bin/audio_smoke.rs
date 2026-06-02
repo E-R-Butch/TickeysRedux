@@ -11,8 +11,8 @@ use std::io::BufReader;
 use std::fs::File;
 use std::time::Duration;
 
-use crossbeam::channel::{bounded, Sender, Receiver};
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Source, buffer::SamplesBuffer};
+use crossbeam::channel::{bounded, Receiver};
+use rodio::{Decoder, OutputStream, Source, buffer::SamplesBuffer};
 
 // ── pre-decode ───────────────────────────────────────────────────────────────
 
@@ -76,7 +76,7 @@ fn main() {
 
     // Test 1: decode WAV
     println!("[TEST 1] Decode WAV files");
-    let wav_dir = "Tickeys.app/Contents/Resources/data/sword";
+    let wav_dir = "assets/data/sword";
     let wavs = vec!["1.wav", "2.wav", "3.wav"];
     let mut data = vec![];
     for w in &wavs {

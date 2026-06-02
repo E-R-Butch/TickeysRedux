@@ -19,7 +19,7 @@ impl Pref {
 
             let pref = Pref {
                 scheme: schemes[0].name.clone(),
-                volume: 0.5,
+                volume: 50.0,
                 pitch: 1.0,
             };
 
@@ -33,13 +33,26 @@ impl Pref {
             }
 
             let audio_scheme_key = NSString::from_str("audio_scheme");
-            let volume_key = NSString::from_str("volume");
-            let pitch_key = NSString::from_str("pitch");
+            let volume_key = NSString::from_str("audio_volume");
+            let pitch_key = NSString::from_str("audio_pitch");
 
             let audio_scheme: Option<Retained<NSString>> =
                 msg_send![&ud, stringForKey: &*audio_scheme_key];
-            let volume: f32 = msg_send![&ud, floatForKey: &*volume_key];
-            let pitch: f32 = msg_send![&ud, floatForKey: &*pitch_key];
+
+            // Use objectForKey to detect missing keys (floatForKey returns 0 for missing)
+            let vol_obj: *mut objc2::runtime::AnyObject = msg_send![&ud, objectForKey: &*volume_key];
+            let volume: f32 = if !vol_obj.is_null() {
+                msg_send![&ud, floatForKey: &*volume_key]
+            } else {
+                pref.volume
+            };
+
+            let pitch_obj: *mut objc2::runtime::AnyObject = msg_send![&ud, objectForKey: &*pitch_key];
+            let pitch: f32 = if !pitch_obj.is_null() {
+                msg_send![&ud, floatForKey: &*pitch_key]
+            } else {
+                pref.pitch
+            };
 
             let mut scheme_str = audio_scheme
                 .map(|s| s.to_string())
@@ -63,8 +76,8 @@ impl Pref {
             let ud = NSUserDefaults::standardUserDefaults();
 
             let audio_scheme_key = NSString::from_str("audio_scheme");
-            let volume_key = NSString::from_str("volume");
-            let pitch_key = NSString::from_str("pitch");
+            let volume_key = NSString::from_str("audio_volume");
+            let pitch_key = NSString::from_str("audio_pitch");
             let pref_exists_key = NSString::from_str("pref_exists");
 
             let _: () = msg_send![
@@ -72,8 +85,11 @@ impl Pref {
                 setObject: &*NSString::from_str(&self.scheme),
                 forKey: &*audio_scheme_key
             ];
-            let _: () = msg_send![&ud, setFloat: self.volume, forKey: &*volume_key];
-            let _: () = msg_send![&ud, setFloat: self.pitch, forKey: &*pitch_key];
+
+            // Use setDouble:forKey: — NSUserDefaults stores numbers as double internally
+            let _: () = msg_send![&ud, setDouble: self.volume as f64, forKey: &*volume_key];
+            let _: () = msg_send![&ud, setDouble: self.pitch as f64, forKey: &*pitch_key];
+
             let _: () = msg_send![&ud, setObject: &*pref_exists_key, forKey: &*pref_exists_key];
             let _: bool = msg_send![&ud, synchronize];
         }

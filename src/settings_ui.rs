@@ -2,9 +2,9 @@
 //! Uses NSStatusBar item + NSMenu, with a MenuHandler target for actions.
 //! Menu is rebuilt on every action to keep checkmarks current.
 
-use objc2::{define_class, msg_send, sel, ClassType, MainThreadOnly};
+use objc2::{define_class, msg_send, sel, MainThreadOnly};
 use objc2::rc::Retained;
-use objc2_app_kit::{NSMenu, NSMenuItem, NSStatusBar, NSStatusBarButton, NSStatusItem, NSVariableStatusItemLength};
+use objc2_app_kit::{NSMenu, NSMenuItem, NSStatusBar, NSStatusItem, NSVariableStatusItemLength};
 use objc2_foundation::{MainThreadMarker, NSObject, NSObjectProtocol, NSString, NSUserDefaults};
 
 use crate::cocoa_util::*;
@@ -80,6 +80,16 @@ define_class!(
             save_float("audio_pitch", pitch);
             let schemes = load_schemes();
             rebuild(self, &schemes, self.mtm());
+        }
+
+        #[unsafe(method(openPreferences:))]
+        fn open_preferences(&self, _sender: &NSMenuItem) {
+            let mtm = self.mtm();
+            unsafe {
+                if !MENU_TICKEYS.is_null() {
+                    crate::settings_window::show_prefs_window(mtm, MENU_TICKEYS);
+                }
+            }
         }
     }
 );
@@ -159,6 +169,16 @@ fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker
         pi.setSubmenu(Some(&pm));
         menu.addItem(&pi);
 
+        // Preferences
+        let pref = NSMenuItem::initWithTitle_action_keyEquivalent(
+            NSMenuItem::alloc(mtm),
+            &l10n_str("preferences"),
+            Some(sel!(openPreferences:)),
+            &NSString::from_str(""),
+        );
+        pref.setTarget(Some(handler));
+        menu.addItem(&pref);
+
         // Quit
         menu.addItem(&NSMenuItem::separatorItem(mtm));
         let q = NSMenuItem::initWithTitle_action_keyEquivalent(
@@ -180,16 +200,16 @@ fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 fn save_string(key: &str, val: &str) {
-    let ud = unsafe { NSUserDefaults::standardUserDefaults() };
+    let ud = NSUserDefaults::standardUserDefaults();
     let k = NSString::from_str(key);
     let v = NSString::from_str(val);
     unsafe { let _: () = msg_send![&ud, setObject: &*v, forKey: &*k]; }
 }
 
 fn save_float(key: &str, val: f32) {
-    let ud = unsafe { NSUserDefaults::standardUserDefaults() };
+    let ud = NSUserDefaults::standardUserDefaults();
     let k = NSString::from_str(key);
-    unsafe { let _: () = msg_send![&ud, setFloat: val, forKey: &*k]; }
+    unsafe { let _: () = msg_send![&ud, setDouble: val as f64, forKey: &*k]; }
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -201,7 +221,6 @@ pub fn setup_menu(mtm: MainThreadMarker, tickeys_ptr: *mut Tickeys) {
     let handler: Retained<MenuHandler> = unsafe { msg_send![MenuHandler::alloc(mtm), init] };
 
     // Create the status bar item once and store it.
-    // rebuild() will update its menu on subsequent calls.
     unsafe {
         let status_bar = NSStatusBar::systemStatusBar();
         let item: Retained<NSStatusItem> = msg_send![&status_bar, statusItemWithLength: NSVariableStatusItemLength];
@@ -214,6 +233,39 @@ pub fn setup_menu(mtm: MainThreadMarker, tickeys_ptr: *mut Tickeys) {
 
     rebuild(&handler, &schemes, mtm);
     std::mem::forget(handler);
+
+    // Respect initial preference: hide if user previously turned it off
+    let show = load_pref_bool("show_in_menu_bar", true);
+    if !show {
+        set_menu_bar_visible(mtm, false);
+    }
+}
+
+/// Show or hide the menu bar icon.
+pub fn set_menu_bar_visible(mtm: MainThreadMarker, visible: bool) {
+    unsafe {
+        if MENU_ITEM.is_null() { return; }
+        let item: &NSStatusItem = &*MENU_ITEM;
+        let button = item.button(mtm);
+        if let Some(btn) = button {
+            btn.setHidden(!visible);
+        }
+        // Save preference
+        let ud = NSUserDefaults::standardUserDefaults();
+        let k = NSString::from_str("show_in_menu_bar");
+        let v: *mut objc2::runtime::AnyObject =
+            msg_send![objc2::runtime::AnyClass::get(std::ffi::CStr::from_bytes_with_nul(b"NSNumber\0").unwrap()).unwrap(), numberWithBool: visible];
+        let _: () = msg_send![&ud, setObject: v, forKey: &*k];
+    }
+}
+
+fn load_pref_bool(key: &str, default: bool) -> bool {
+    unsafe {
+        let ud = NSUserDefaults::standardUserDefaults();
+        let k = NSString::from_str(key);
+        let val: *mut objc2::runtime::AnyObject = msg_send![&ud, objectForKey: &*k];
+        if val.is_null() { default } else { msg_send![val, boolValue] }
+    }
 }
 
 // ── Preferences loading ──────────────────────────────────────────────────────

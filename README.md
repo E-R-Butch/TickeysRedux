@@ -8,7 +8,7 @@ Fork of [Tickeys](https://github.com/yingDev/Tickeys) by 应元东 — ported to
 
 > **⚠️ This project targets Apple Silicon (arm64) only. It does not run on Intel Macs. Intel users should use the [original Tickeys](https://github.com/yingDev/Tickeys) instead.**
 
-## What's New in v1.0.0
+## What's New in v1.0.5
 
 | | Original | Redux |
 |---|---|---|
@@ -46,38 +46,38 @@ Requires Rust 1.77+. Binary at `target/release/tickeys-redux`.
 ## Building the App Bundle
 
 ```sh
-cargo build --release
+./scripts/package_app.sh
+```
 
-# Create .app structure
+This script handles:
+- `cargo build --release`
+- Creates `Tickeys Redux.app` bundle with all resources
+- Writes `Info.plist` (version read from `Cargo.toml`)
+- Ad-hoc codesigns and verifies the bundle
+
+### Manual build
+
+```sh
+cargo build --release
 mkdir -p "Tickeys Redux.app/Contents/MacOS"
 mkdir -p "Tickeys Redux.app/Contents/Resources"
 cp target/release/tickeys-redux "Tickeys Redux.app/Contents/MacOS/"
-cp -R Tickeys.app/Contents/Resources/data "Tickeys Redux.app/Contents/Resources/"
-cp Tickeys.app/Contents/Resources/tickeys.icns "Tickeys Redux.app/Contents/Resources/"
+cp -R assets/data "Tickeys Redux.app/Contents/Resources/"
+cp assets/tickeys_redux.icns "Tickeys Redux.app/Contents/Resources/tickeys.icns"
+# Write Info.plist, then:
+codesign --force --deep --sign - "Tickeys Redux.app"
+codesign --verify --deep --strict "Tickeys Redux.app"
+```
 
-# Write Info.plist (LSUIElement = true for menu bar only, no Dock icon)
-cat > "Tickeys Redux.app/Contents/Info.plist" << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>tickeys-redux</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.tickeys.redux</string>
-    <key>CFBundleName</key>
-    <string>Tickeys Redux</string>
-    <key>CFBundleVersion</key>
-    <string>1.0.0</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>LSUIElement</key>
-    <true/>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-</dict>
-</plist>
-EOF
+### Verification
+
+After building, verify the bundle is healthy:
+
+```sh
+cargo build --release
+./scripts/package_app.sh
+codesign --verify --deep --strict --verbose=2 "Tickeys Redux.app"
+plutil -lint "Tickeys Redux.app/Contents/Info.plist"
 ```
 
 ## Custom Sound Schemes

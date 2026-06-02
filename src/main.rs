@@ -15,8 +15,10 @@ mod core_foundation;
 mod core_graphics;
 mod event_tap;
 mod iokit;
+mod launcher;
 mod pref;
 mod settings_ui;
+mod settings_window;
 mod tickeys;
 
 use crate::cocoa_util::*;
@@ -77,7 +79,7 @@ define_class!(
                 &get_res_path(&format!("data/{}", &pref.scheme)),
                 &pref.scheme,
             );
-            tickeys_box.set_volume(pref.volume);
+            tickeys_box.set_volume(pref.volume / 100.0);
             tickeys_box.set_pitch(pref.pitch);
 
             let ptr = Box::into_raw(tickeys_box);
@@ -92,7 +94,7 @@ define_class!(
                 }
                 Err(e) => {
                     eprintln!("KeyboardMonitor failed: {}", e);
-                    // Show permission prompt
+                    // Show permission prompt but DON'T exit — let app keep running
                     let alert: Retained<AnyObject> = unsafe {
                         let cls = objc2::runtime::AnyClass::get(
                             std::ffi::CStr::from_bytes_with_nul(b"NSAlert\0").unwrap()
@@ -101,9 +103,9 @@ define_class!(
                     };
                     unsafe {
                         let _: () = msg_send![&alert, setMessageText: &*nsstr("需要输入监控权限")];
-                        let _: () = msg_send![&alert, setInformativeText: &*nsstr("Tickeys Redux 需要「输入监控」权限才能检测按键。\n\n请在 系统设置 → 隐私与安全性 → 输入监控 中添加并启用 Tickeys Redux，然后重新启动。")];
+                        let _: () = msg_send![&alert, setInformativeText: &*nsstr("Tickeys Redux 需要「输入监控」权限才能检测按键。\n\n请在 系统设置 → 隐私与安全性 → 输入监控 中添加并启用 Tickeys Redux，然后重新启动。\n\n当前将以无按键音效模式运行。")];
                         let _: () = msg_send![&alert, addButtonWithTitle: &*nsstr("打开系统设置")];
-                        let _: () = msg_send![&alert, addButtonWithTitle: &*nsstr("退出")];
+                        let _: () = msg_send![&alert, addButtonWithTitle: &*nsstr("暂不设置")];
                         let response: isize = msg_send![&alert, runModal];
                         if response == 1000 {
                             let ws_cls = objc2::runtime::AnyClass::get(
@@ -118,7 +120,6 @@ define_class!(
                             let _: () = msg_send![ws, openURL: url];
                         }
                     }
-                    std::process::exit(0);
                 }
             }
             settings_ui::setup_menu(mtm, ptr);
@@ -135,6 +136,12 @@ define_class!(
                     drop(Box::from_raw(p));
                 }
             }
+        }
+
+        #[unsafe(method(applicationShouldHandleReopen:hasVisibleWindows:))]
+        fn should_handle_reopen(&self, _app: &AnyObject, _flag: bool) -> bool {
+            // LSUIElement apps: return true to prevent exception on reopen event
+            true
         }
     }
 );
@@ -197,9 +204,7 @@ fn main() {
 
         let app = NSApplication::sharedApplication(mtm);
         app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
-        unsafe {
-            app.setDelegate(Some(ProtocolObject::from_ref(&*delegate)));
-        }
+        app.setDelegate(Some(ProtocolObject::from_ref(&*delegate)));
         app.run();
     });
 }

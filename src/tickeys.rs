@@ -53,7 +53,7 @@ impl AudioData {
 // Commands (CGEventTap → audio worker)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-pub(crate) enum AudioCommand {
+pub enum AudioCommand {
     Play(usize),
     ReloadScheme(Vec<AudioData>),
     SetVolume(f32),
@@ -164,6 +164,7 @@ pub struct Tickeys {
     audio_tx: Sender<AudioCommand>,
 }
 
+#[allow(dead_code)]
 impl Tickeys {
     pub fn new(schemes: Vec<AudioScheme>, audio_tx: Sender<AudioCommand>) -> Tickeys {
         Tickeys {
@@ -203,11 +204,13 @@ impl Tickeys {
     }
 
     pub fn set_volume(&mut self, volume: f32) {
+        let volume = volume.clamp(0.0, 1.0);
         self.volume = volume;
         let _ = self.audio_tx.try_send(AudioCommand::SetVolume(volume));
     }
 
     pub fn set_pitch(&mut self, pitch: f32) {
+        let pitch = pitch.clamp(0.25, 2.0);
         self.pitch = pitch;
         let _ = self.audio_tx.try_send(AudioCommand::SetSpeed(pitch));
     }

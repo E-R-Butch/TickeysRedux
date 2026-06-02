@@ -8,7 +8,7 @@ Fork 自 [Tickeys](https://github.com/yingDev/Tickeys)（应元东） — 移植
 
 [English](README.md) | 中文
 
-## v1.0.0 更新
+## v1.0.5 更新
 
 | | 原版 | Redux |
 |---|---|---|
@@ -45,6 +45,16 @@ cargo build --release
 
 ## 打包 App Bundle
 
+使用一键脚本：
+
+```sh
+./scripts/package_app.sh
+```
+
+脚本会自动完成：release 构建 → 创建 `.app` 结构 → 复制二进制 & 资源 → 写入 `Info.plist` → ad-hoc 签名 & 校验。
+
+也可以手动操作（不推荐）：
+
 ```sh
 cargo build --release
 
@@ -52,32 +62,12 @@ cargo build --release
 mkdir -p "Tickeys Redux.app/Contents/MacOS"
 mkdir -p "Tickeys Redux.app/Contents/Resources"
 cp target/release/tickeys-redux "Tickeys Redux.app/Contents/MacOS/"
-cp -R Tickeys.app/Contents/Resources/data "Tickeys Redux.app/Contents/Resources/"
-cp Tickeys.app/Contents/Resources/tickeys.icns "Tickeys Redux.app/Contents/Resources/"
+cp -R assets/data "Tickeys Redux.app/Contents/Resources/data"
+cp -R assets/lproj/Base.lproj "Tickeys Redux.app/Contents/Resources/Base.lproj"
+cp -R assets/lproj/zh-Hans.lproj "Tickeys Redux.app/Contents/Resources/zh-Hans.lproj"
+cp assets/tickeys_redux.icns "Tickeys Redux.app/Contents/Resources/tickeys.icns"
 
-# 写入 Info.plist（LSUIElement = true，仅菜单栏，无 Dock 图标）
-cat > "Tickeys Redux.app/Contents/Info.plist" << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>tickeys-redux</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.tickeys.redux</string>
-    <key>CFBundleName</key>
-    <string>Tickeys Redux</string>
-    <key>CFBundleVersion</key>
-    <string>1.0.0</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>LSUIElement</key>
-    <true/>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-</dict>
-</plist>
-EOF
+# 写入 Info.plist …（见 scripts/package_app.sh）
 ```
 
 ## 自定义音效方案

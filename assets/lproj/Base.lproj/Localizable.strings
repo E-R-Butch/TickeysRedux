@@ -7,7 +7,17 @@
 "sound_scheme" = "Sound Scheme";
 "volume" = "Volume";
 "pitch" = "Pitch";
+"preferences" = "Preferences…";
 "quit_tickeys" = "Quit Tickeys Redux";
+
+/* Tab labels */
+"tab_sound" = "Sound";
+"tab_general" = "General";
+"tab_about" = "About";
+
+/* General tab */
+"start_at_login" = "Start at Login";
+"show_in_menu_bar" = "Show in Menu Bar";
 
 /* Volume labels */
 "vol_25" = "25%";

@@ -1,5 +1,6 @@
 cask "tickeys-redux" do
-  version "1.0.0"
+  version "1.0.5"
+  # TODO: 发布 DMG 时重新计算 sha256
   sha256 "aba2f1b3152b30a3b81091403c92096b946905ed4db73ffa9f5d856bd142c90c"
 
   url "https://github.com/E-R-Butch/TickeysRedux/releases/download/v#{version}/Tickeys.Redux.v#{version}.dmg"
@@ -12,8 +13,8 @@ cask "tickeys-redux" do
   app "Tickeys Redux.app"
 
   zap trash: [
-    "~/Library/Preferences/com.tickeys.redux.plist",
-    "~/Library/Saved Application State/com.tickeys.redux.savedState",
+    "~/Library/Preferences/com.sinclair.tickeys-redux.plist",
+    "~/Library/Saved Application State/com.sinclair.tickeys-redux.savedState",
   ]
 
   caveats <<~EOS

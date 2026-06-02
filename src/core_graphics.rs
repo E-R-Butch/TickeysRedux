@@ -54,6 +54,7 @@ pub enum CGEventType {
 }
 
 #[repr(i32)]
+#[allow(dead_code)]
 pub enum CGWindowLevelKey {
     kCGBaseWindowLevelKey = 0,
     kCGMinimumWindowLevelKey,
@@ -159,8 +160,10 @@ macro_rules! CGEventMaskBit {
     };
 }
 
+#[allow(dead_code)]
 pub const kCGEventMaskForAllEvents: u64 = !0;
 
+#[allow(dead_code)]
 #[link(name = "CoreGraphics", kind = "framework")]
 unsafe extern "system" {
     pub fn CGEventTapCreate(

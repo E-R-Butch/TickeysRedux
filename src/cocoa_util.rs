@@ -12,15 +12,13 @@ use objc2_foundation::{NSBundle, NSString};
 
 /// Get localized string from main bundle.
 pub fn l10n_str(key: &str) -> Retained<NSString> {
-    let bundle = unsafe { NSBundle::mainBundle() };
+    let bundle = NSBundle::mainBundle();
     let key_ns = NSString::from_str(key);
-    unsafe {
-        bundle.localizedStringForKey_value_table(
-            &key_ns,
-            None,
-            None,
-        )
-    }
+    bundle.localizedStringForKey_value_table(
+        &key_ns,
+        None,
+        None,
+    )
 }
 
 /// Convert NSString to Rust String.
@@ -34,6 +32,7 @@ pub fn nsstr(s: &str) -> Retained<NSString> {
 }
 
 /// Extract filename from NSURL.
+#[allow(dead_code)]
 pub fn nsurl_filename(nsurl: &AnyObject) -> Retained<NSString> {
     unsafe {
         let path_components: Retained<AnyObject> = msg_send![nsurl, pathComponents];
@@ -51,6 +50,7 @@ pub fn get_res_path(sub_path: &str) -> String {
 }
 
 /// Terminate the application.
+#[allow(dead_code)]
 pub fn app_terminate() {
     unsafe {
         let cls = get_class("NSApplication");

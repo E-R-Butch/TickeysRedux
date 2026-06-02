@@ -7,7 +7,17 @@
 "sound_scheme" = "音效方案";
 "volume" = "音量";
 "pitch" = "音调";
+"preferences" = "偏好设置…";
 "quit_tickeys" = "退出 Tickeys Redux";
+
+/* Tab labels */
+"tab_sound" = "音效";
+"tab_general" = "通用";
+"tab_about" = "关于";
+
+/* General tab */
+"start_at_login" = "登录时自动启动";
+"show_in_menu_bar" = "在菜单栏显示图标";
 
 /* Volume labels */
 "vol_25" = "25%";
