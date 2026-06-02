@@ -164,7 +164,6 @@ pub struct Tickeys {
     audio_tx: Sender<AudioCommand>,
 }
 
-#[allow(dead_code)]
 impl Tickeys {
     pub fn new(schemes: Vec<AudioScheme>, audio_tx: Sender<AudioCommand>) -> Tickeys {
         Tickeys {
@@ -179,8 +178,6 @@ impl Tickeys {
             audio_tx,
         }
     }
-
-    pub fn get_schemes(&self) -> &Vec<AudioScheme> { &self.schemes }
 
     fn find_scheme(&self, name: &str) -> AudioScheme {
         self.schemes.iter().find(|s| s.name == name).cloned().unwrap()
@@ -213,15 +210,6 @@ impl Tickeys {
         let pitch = pitch.clamp(0.25, 2.0);
         self.pitch = pitch;
         let _ = self.audio_tx.try_send(AudioCommand::SetSpeed(pitch));
-    }
-
-    pub fn set_mute(&mut self, mute: bool) { self.mute = mute; }
-    pub fn get_volume(&self) -> f32 { self.volume }
-    pub fn get_pitch(&self) -> f32 { self.pitch }
-    pub fn get_last_keys(&self) -> &VecDeque<u8> { &self.last_keys }
-
-    pub fn set_on_keydown(&mut self, cb: Option<fn(&Tickeys, u8)>) {
-        self.on_keydown = cb;
     }
 
     /// Called from CGEventTap callback (via send_play_command).

@@ -31,15 +31,6 @@ pub fn nsstr(s: &str) -> Retained<NSString> {
     NSString::from_str(s)
 }
 
-/// Extract filename from NSURL.
-#[allow(dead_code)]
-pub fn nsurl_filename(nsurl: &AnyObject) -> Retained<NSString> {
-    unsafe {
-        let path_components: Retained<AnyObject> = msg_send![nsurl, pathComponents];
-        msg_send![&path_components, lastObject]
-    }
-}
-
 /// Get resource path relative to the app bundle.
 pub fn get_res_path(sub_path: &str) -> String {
     let exe = env::current_exe().unwrap();
@@ -47,16 +38,6 @@ pub fn get_res_path(sub_path: &str) -> String {
     path.push("../Resources");
     path.push(sub_path);
     path.to_string_lossy().to_string()
-}
-
-/// Terminate the application.
-#[allow(dead_code)]
-pub fn app_terminate() {
-    unsafe {
-        let cls = get_class("NSApplication");
-        let app: Retained<AnyObject> = msg_send![cls, sharedApplication];
-        let _: () = msg_send![&app, terminate: std::ptr::null::<AnyObject>()];
-    }
 }
 
 /// Relaunch self (used after Accessibility permission grant).
