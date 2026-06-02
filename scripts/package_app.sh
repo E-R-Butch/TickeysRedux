@@ -92,3 +92,26 @@ echo "Binary:  $(md5 -q "$MACOS/tickeys-redux")"
 echo "Version: ${VERSION}"
 echo ""
 echo "To test: open \"$BUNDLE_DIR\""
+echo ""
+
+# ── Optional: DMG ──────────────────────────────────────────────────────────────
+if [[ "${1:-}" == "--dmg" ]] || [[ "${1:-}" == "-d" ]]; then
+    DMG_OUT="${2:-$HOME/Desktop/TickeysRedux.dmg}"
+    BG_IMG="$PROJECT_DIR/assets/dmg_bg.png"
+    if [[ ! -f "$BG_IMG" ]]; then
+        echo "⚠  DMG background not found: $BG_IMG"
+        exit 1
+    fi
+    echo "=== Creating DMG: $DMG_OUT ==="
+    create-dmg \
+        --volname "$APP_NAME" \
+        --background "$BG_IMG" \
+        --window-size 660 480 \
+        --icon-size 96 \
+        --icon "$APP_NAME.app" 175 240 \
+        --icon "Applications" 505 240 \
+        --app-drop-link 505 240 \
+        "$DMG_OUT" \
+        "$BUNDLE_DIR"
+    echo "DMG created: $DMG_OUT"
+fi
