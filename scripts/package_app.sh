@@ -38,7 +38,7 @@ cp target/release/tickeys-redux "$MACOS/"
 
 # ── Step 5: Copy resources ────────────────────────────────────────────────────
 echo "[5/7] copying resources"
-cp -R "$DATA_SRC" "$RESOURCES/data"
+rsync -a --exclude='*.bak' --exclude='*.wav.bak' "$DATA_SRC/" "$RESOURCES/data/"
 cp "$ICON_SRC" "$RESOURCES/tickeys.icns"
 cp -R "$LPROJ_BASE" "$RESOURCES/Base.lproj"
 cp -R "$LPROJ_ZH" "$RESOURCES/zh-Hans.lproj"
