@@ -1,12 +1,43 @@
 # Tickeys Redux
 
-> Mechanical keyboard sound effects for macOS. Instant audio feedback for every keystroke.
+Native Apple Silicon menu bar app that brings mechanical keyboard sounds back to modern macOS.
 
 [English](README.md) | [中文](README_zh-CN.md)
 
-Fork of [Tickeys](https://github.com/yingDev/Tickeys) by 应元东 — ported to arm64 macOS with modern Rust, zero legacy dependencies.
+![Tickeys Redux preview](docs/hero.svg)
 
-> **⚠️ This project targets Apple Silicon (arm64) only. It does not run on Intel Macs. Intel users should use the [original Tickeys](https://github.com/yingDev/Tickeys) instead.**
+**Free, open source, local-only. No microphone. No telemetry. No cloud.**
+
+[Download from Releases](https://github.com/E-R-Butch/TickeysRedux/releases) · [Build from source](#building-the-app-bundle) · [中文说明](README_zh-CN.md)
+
+Tickeys Redux is a modern macOS port of [Tickeys](https://github.com/yingDev/Tickeys) by Ying Yuandong. It keeps the playful typing feedback of the original app, but rebuilds the runtime for Apple Silicon with Rust, objc2, rodio, CoreAudio, and a clean menu bar interface.
+
+> **Apple Silicon only.** This project targets arm64 Macs. Intel Mac users should use the [original Tickeys](https://github.com/yingDev/Tickeys).
+
+## Why Try It
+
+- **Instant typing feedback** with bundled mechanical, typewriter, sword, drum, bubble, and Cherry G80 sound packs.
+- **Native menu bar workflow**: switch schemes, adjust volume, and tune pitch without opening a full app window.
+- **Privacy-respecting by design**: uses macOS Input Monitoring to detect key events, not a microphone.
+- **No background web services**: no telemetry, cloud sync, analytics, or update beacon.
+- **Modern native stack**: Rust 2024, objc2, rodio, CoreAudio, and an auditable app bundle script.
+- **Classic Tickeys spirit**: preserves the original fun while removing legacy dylib dependencies.
+
+## Demo
+
+The app lives quietly in the menu bar. Pick a sound scheme, set volume and pitch, then type. Each key-down event plays a short local WAV sample immediately.
+
+```text
+Menu bar -> Sound Scheme -> Mechanical / Typewriter / Sword / Drum / Bubble / Cherry
+Menu bar -> Volume       -> 25% / 50% / 75% / 100%
+Menu bar -> Pitch        -> 0.5x / 1.0x / 1.5x / 2.0x
+```
+
+## Install
+
+Download `Tickeys.Redux.v1.0.5.dmg` from [Releases](https://github.com/E-R-Butch/TickeysRedux/releases), open it, and copy `Tickeys Redux.app` to Applications.
+
+On first launch, grant **Input Monitoring** permission when macOS asks. Tickeys Redux needs this permission to know that a key was pressed; it does not record text or use the microphone.
 
 ## What's New in v1.0.5
 
@@ -15,23 +46,11 @@ Fork of [Tickeys](https://github.com/yingDev/Tickeys) by 应元东 — ported to
 | **Architecture** | x86_64 | **arm64 native** |
 | **Audio engine** | OpenAL + libalut (.dylib) | **rodio** (pure Rust → CoreAudio) |
 | **UI framework** | cocoa 0.2 + XIB | **objc2 0.6** + NSStatusBar |
-| **Rust edition** | 2015 | **2021** |
+| **Rust edition** | 2015 | **2024** |
 | **Settings** | Unfinished XIB window | 🎹 **Menu bar** — scheme/volume/pitch |
 | **Permissions** | None | **Input Monitoring** (native macOS prompt) |
 | **Update checker** | Built-in | **Removed** |
 | **macOS target** | 10.10+ | **11+** (arm64 baseline) |
-
-## Install
-
-Download from [Releases](https://github.com/E-R-Butch/TickeysRedux/releases), or build from source:
-
-```sh
-git clone https://github.com/E-R-Butch/TickeysRedux.git
-cd TickeysRedux
-cargo build --release
-```
-
-Requires Rust 1.77+. Binary at `target/release/tickeys-redux`.
 
 ## Usage
 
@@ -45,7 +64,11 @@ Requires Rust 1.77+. Binary at `target/release/tickeys-redux`.
 
 ## Building the App Bundle
 
+Requires Rust 1.77+.
+
 ```sh
+git clone https://github.com/E-R-Butch/TickeysRedux.git
+cd TickeysRedux
 ./scripts/package_app.sh
 ```
 
@@ -55,14 +78,14 @@ This script handles:
 - Writes `Info.plist` (version read from `Cargo.toml`)
 - Ad-hoc codesigns and verifies the bundle
 
-### Manual build
+### Manual Build
 
 ```sh
 cargo build --release
 mkdir -p "Tickeys Redux.app/Contents/MacOS"
 mkdir -p "Tickeys Redux.app/Contents/Resources"
 cp target/release/tickeys-redux "Tickeys Redux.app/Contents/MacOS/"
-cp -R assets/data "Tickeys Redux.app/Contents/Resources/"
+rsync -a --exclude='*.bak' --exclude='*.wav.bak' assets/data/ "Tickeys Redux.app/Contents/Resources/data/"
 cp assets/tickeys_redux.icns "Tickeys Redux.app/Contents/Resources/tickeys.icns"
 # Write Info.plist, then:
 codesign --force --deep --sign - "Tickeys Redux.app"
@@ -82,7 +105,7 @@ plutil -lint "Tickeys Redux.app/Contents/Info.plist"
 
 ## Custom Sound Schemes
 
-Add your own `.wav` files under `Resources/data/` and edit `schemes.json`:
+Add your own `.wav` files under `assets/data/` and edit `assets/data/schemes.json`:
 
 ```json
 {
@@ -110,6 +133,10 @@ Add your own `.wav` files under `Resources/data/` and edit `schemes.json`:
 Tickeys Redux uses `CGEventTapCreate` to listen for global key-down events. This requires **Input Monitoring** permission on macOS. The system prompt appears automatically on first launch. No Accessibility permission needed.
 
 Note: each `cargo build` changes the binary's ad-hoc code signature hash. Re-grant Input Monitoring permission after rebuilding. A proper Developer ID signature eliminates this.
+
+## Project Metadata
+
+Suggested GitHub topics are listed in [docs/github-metadata.md](docs/github-metadata.md).
 
 ## License
 

@@ -1,7 +1,6 @@
 cask "tickeys-redux" do
   version "1.0.5"
-  # TODO: 发布 DMG 时重新计算 sha256
-  sha256 "aba2f1b3152b30a3b81091403c92096b946905ed4db73ffa9f5d856bd142c90c"
+  sha256 "51ba63a15a269b68946e461391c4bf3b295167e3ee630432e0b2f84208a2e1aa"
 
   url "https://github.com/E-R-Butch/TickeysRedux/releases/download/v#{version}/Tickeys.Redux.v#{version}.dmg"
   name "Tickeys Redux"
