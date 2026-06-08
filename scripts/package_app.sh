@@ -113,5 +113,40 @@ if [[ "${1:-}" == "--dmg" ]] || [[ "${1:-}" == "-d" ]]; then
         --app-drop-link 505 240 \
         "$DMG_OUT" \
         "$BUNDLE_DIR"
-    echo "DMG created: $DMG_OUT"
+
+    # ── Verify DMG structure ────────────────────────────────────────────────────
+    echo "=== Verifying DMG structure ==="
+    VERIFY_MOUNT="/Volumes/dmg_verify_$$"
+    hdiutil attach "$DMG_OUT" -nobrowse -readonly -mountpoint "$VERIFY_MOUNT" 2>&1
+    if [[ ! -d "$VERIFY_MOUNT" ]]; then
+        echo "❌  DMG mount failed"
+        exit 1
+    fi
+    FAIL=0
+    if [[ ! -d "$VERIFY_MOUNT/$APP_NAME.app" ]]; then
+        echo "❌  App bundle missing from DMG"
+        FAIL=1
+    fi
+    if [[ ! -L "$VERIFY_MOUNT/Applications" ]]; then
+        echo "❌  Applications symlink missing from DMG"
+        FAIL=1
+    fi
+    if [[ ! -f "$VERIFY_MOUNT/.background/dmg_bg.png" ]]; then
+        echo "❌  Background image missing from DMG"
+        FAIL=1
+    fi
+    if [[ ! -f "$VERIFY_MOUNT/.DS_Store" ]]; then
+        echo "❌  .DS_Store (Finder layout) missing from DMG"
+        FAIL=1
+    fi
+    hdiutil detach "$VERIFY_MOUNT" 2>/dev/null
+    if [[ $FAIL -ne 0 ]]; then
+        echo ""
+        echo "❌  DMG VERIFICATION FAILED — the DMG is broken and should NOT be released."
+        echo "    This can happen if create-dmg's AppleScript phase fails silently (common on macOS 26+)."
+        echo "    Check: https://github.com/sindresorhus/create-dmg/issues"
+        exit 1
+    fi
+    echo "✅ DMG verified: $DMG_OUT"
+    shasum -a 256 "$DMG_OUT" | tee "${DMG_OUT%.dmg}.sha256.txt"
 fi
