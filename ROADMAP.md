@@ -120,5 +120,5 @@ macOS 版成熟后，将核心音频引擎（`src/tickeys.rs`）抽离为平台�
 | 项 | 说明 |
 |----|------|
 | 代码签名 | v1.0.7 起正式版使用长期免费自签名身份；本地 ad-hoc rebuild 仍可能需重授输入监控权限 |
-| 公证 | 不购买 Developer ID；Gatekeeper 拦截时需右键打开 |
+| 公证 | 不购买 Developer ID；Gatekeeper 拦截时需在“隐私与安全性”中选择“仍要打开” |
 | objc2 废弃语法 ✓ | `msg_send!` 无逗号语法已修正（settings_ui.rs 两处 `forKey`） |

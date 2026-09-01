@@ -11,7 +11,7 @@ Tickeys Redux does not use a paid Apple Developer ID and is not notarized. Start
 
 The private key is stored only in the maintainer's login keychain and is never committed to this repository. Losing or replacing that key changes the application's designated requirement and requires users to grant Input Monitoring again.
 
-The self-signed identity provides continuity and prevents an ad-hoc application that merely copies the bundle identifier from inheriting permission. It does not provide Apple trust, notarization, or a smoother Gatekeeper prompt.
+The self-signed identity provides continuity and prevents an ad-hoc application that merely copies the bundle identifier from inheriting permission. It does not provide Apple trust, notarization, or a smoother Gatekeeper prompt. Users must create a local Gatekeeper exception, and administrator-managed Macs may not permit that override.
 
 ## Build behavior
 

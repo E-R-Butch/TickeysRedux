@@ -37,7 +37,7 @@ Tickeys Redux 是 [Tickeys](https://github.com/yingDev/Tickeys)（应元东）�
 
 从 [Releases](https://github.com/E-R-Butch/TickeysRedux/releases) 下载最新 `.dmg`，打开后把 `Tickeys Redux.app` 拖到 Applications。
 
-正式发布版使用一张长期不变的免费自签名证书，不购买 Apple Developer ID，也不做公证。如果 macOS 首次启动时拦截，请按住 Control 点击 `Tickeys Redux.app`，选择「打开」，再确认「打开」。
+正式发布版使用一张长期不变的免费自签名证书，不购买 Apple Developer ID，也不做公证。如果 macOS 首次启动时拦截，请先尝试打开一次，再前往「系统设置 → 隐私与安全性」，滚动到“安全性”，点击「仍要打开」，最后确认「打开」。由管理员管控的 Mac 可能不允许这样放行。
 
 首次启动时，macOS 会请求「输入监控」权限。Tickeys Redux 只需要知道“按键发生了”，不会记录文本，也不会使用麦克风。授权后请再次打开应用；若仍无声，请完全退出 Tickeys Redux 后重新启动。
 

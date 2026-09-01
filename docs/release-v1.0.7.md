@@ -24,7 +24,7 @@ This maintenance release repairs Start at Login and several reliability problems
 
 Download `Tickeys.Redux.v1.0.7.dmg`, open it, and drag `Tickeys Redux.app` to Applications. Launch it once and grant Input Monitoring permission. Open the app again after granting access; if key sounds are still silent, quit Tickeys Redux completely and relaunch it.
 
-The public build uses the project's persistent, free self-signed release identity. It does not use a paid Apple Developer ID and is not notarized, so macOS may still require Control-clicking the app and choosing Open. Users upgrading from an older ad-hoc build must repair Input Monitoring once; later releases signed with the same identity can retain that application identity. Start at Login registration errors are now shown directly instead of being silently ignored.
+The public build uses the project's persistent, free self-signed release identity. It does not use a paid Apple Developer ID and is not notarized. If macOS blocks the first launch, try opening the app once, then go to System Settings → Privacy & Security, scroll to Security, click Open Anyway, and confirm Open. Administrator-managed Macs may not allow this override. Users upgrading from an older ad-hoc build must repair Input Monitoring once; later releases signed with the same identity can retain that application identity. Start at Login registration errors are now shown directly instead of being silently ignored.
 
 ## Verify Downloads
 

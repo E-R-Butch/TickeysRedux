@@ -22,8 +22,9 @@ cask "tickeys-redux" do
     original Tickeys: brew install --cask tickeys
 
     This build uses the project's free self-signed identity, not Apple
-    Developer ID notarization. If macOS blocks the first launch, Control-click
-    Tickeys Redux.app and choose Open.
+    Developer ID notarization. If macOS blocks the first launch, try opening it
+    once, then use System Settings → Privacy & Security → Open Anyway and
+    confirm Open. Managed Macs may not allow this override.
 
     When upgrading from an older ad-hoc build, remove the stale Tickeys Redux
     entry from Input Monitoring, add the current app, and enable it once.

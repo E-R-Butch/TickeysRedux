@@ -37,7 +37,7 @@ Menu bar -> Pitch        -> 0.5x / 1.0x / 1.5x / 2.0x
 
 Download the latest `.dmg` from [Releases](https://github.com/E-R-Butch/TickeysRedux/releases), open it, and copy `Tickeys Redux.app` to Applications.
 
-Official releases use a persistent, free self-signed identity—not a paid Apple Developer ID—and are not notarized. If macOS blocks the first launch, Control-click `Tickeys Redux.app`, choose **Open**, then confirm **Open**.
+Official releases use a persistent, free self-signed identity—not a paid Apple Developer ID—and are not notarized. If macOS blocks the first launch, try opening the app once, then go to **System Settings → Privacy & Security**, scroll to Security, click **Open Anyway**, and confirm **Open**. Administrator-managed Macs may not allow this override.
 
 On first launch, grant **Input Monitoring** permission when macOS asks. Tickeys Redux needs this permission to know that a key was pressed; it does not record text or use the microphone. Open the app again after granting access; if key sounds are still silent, quit Tickeys Redux completely and relaunch it.
 
