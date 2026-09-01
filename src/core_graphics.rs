@@ -3,9 +3,10 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
+#![allow(clippy::enum_variant_names)]
 
-use std::ffi::c_void;
 use crate::core_foundation::CFMachPortRef;
+use std::ffi::c_void;
 
 #[repr(u32)]
 #[allow(dead_code)]

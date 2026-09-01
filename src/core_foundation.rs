@@ -76,11 +76,7 @@ unsafe extern "system" {
 
     // CFRunLoopPerformBlock — accepts an Objective-C block pointer.
     // In objc2, use Retained<Block<dyn Fn()>> and cast via as_ptr().
-    pub fn CFRunLoopPerformBlock(
-        rl: CFRunLoopRef,
-        mode: CFTypeRef,
-        block: *const c_void,
-    );
+    pub fn CFRunLoopPerformBlock(rl: CFRunLoopRef, mode: CFTypeRef, block: *const c_void);
 
     pub fn CFMessagePortCreateLocal(
         allocator: CFAllocatorRef,

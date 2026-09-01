@@ -1,6 +1,6 @@
-use std::ffi::c_void;
-use crate::core_graphics::*;
 use crate::core_foundation::*;
+use crate::core_graphics::*;
+use std::ffi::c_void;
 
 pub struct KeyboardMonitor {
     event_tap: CFMachPortRef,
@@ -8,8 +8,10 @@ pub struct KeyboardMonitor {
 }
 
 impl KeyboardMonitor {
-
-    pub fn new(handler: CGEventTapCallBack, user_data: *mut c_void) -> Result<KeyboardMonitor, String> {
+    pub fn new(
+        handler: CGEventTapCallBack,
+        user_data: *mut c_void,
+    ) -> Result<KeyboardMonitor, String> {
         unsafe {
             if !CGPreflightListenEventAccess() && !CGRequestListenEventAccess() {
                 return Err("Input Monitoring permission is not granted".to_string());
@@ -34,27 +36,36 @@ impl KeyboardMonitor {
                 return Err("failed to CFMachPortCreateRunLoopSource".to_string());
             }
 
-            CFRunLoopAddSource(CFRunLoopGetCurrent(), run_loop_source, kCFRunLoopCommonModes);
+            CFRunLoopAddSource(
+                CFRunLoopGetCurrent(),
+                run_loop_source,
+                kCFRunLoopCommonModes,
+            );
             CGEventTapEnable(event_tap, true);
 
             if !CGEventTapIsEnabled(event_tap) {
-                CFRunLoopRemoveSource(CFRunLoopGetCurrent(), run_loop_source, kCFRunLoopCommonModes);
+                CFRunLoopRemoveSource(
+                    CFRunLoopGetCurrent(),
+                    run_loop_source,
+                    kCFRunLoopCommonModes,
+                );
                 CFRelease(event_tap);
                 CFRelease(run_loop_source);
                 return Err("CGEventTap was created but is disabled".to_string());
             }
 
-            Ok(KeyboardMonitor { event_tap, runloop_source: run_loop_source })
+            Ok(KeyboardMonitor {
+                event_tap,
+                runloop_source: run_loop_source,
+            })
         }
     }
 
-    #[allow(dead_code)]
-    pub fn set_enabled(&mut self, enabled: bool) {
+    pub fn set_enabled(&self, enabled: bool) {
         unsafe { CGEventTapEnable(self.event_tap, enabled) };
     }
 
-    #[allow(dead_code)]
-    pub fn is_enabled(&mut self) -> bool {
+    pub fn is_enabled(&self) -> bool {
         unsafe { CGEventTapIsEnabled(self.event_tap) }
     }
 }
@@ -63,7 +74,11 @@ impl Drop for KeyboardMonitor {
     fn drop(&mut self) {
         self.set_enabled(false);
         unsafe {
-            CFRunLoopRemoveSource(CFRunLoopGetCurrent(), self.runloop_source, kCFRunLoopCommonModes);
+            CFRunLoopRemoveSource(
+                CFRunLoopGetCurrent(),
+                self.runloop_source,
+                kCFRunLoopCommonModes,
+            );
             CFRelease(self.event_tap);
             CFRelease(self.runloop_source);
         }

@@ -18,6 +18,12 @@
 /* General tab */
 "start_at_login" = "登录时自动启动";
 "show_in_menu_bar" = "在菜单栏显示图标";
+"login_item_approval_title" = "需要系统批准";
+"login_item_approval_message" = "Tickeys Redux 已注册为登录项，但 macOS 仍要求你在“系统设置 → 通用 → 登录项”中批准。";
+"open_login_items_settings" = "打开登录项设置";
+"login_item_error_title" = "无法更新登录项";
+"ok" = "好";
+"cancel" = "取消";
 
 /* Volume labels */
 "vol_25" = "25%";
@@ -48,4 +54,6 @@
 
 /* Permissions */
 "permission_title" = "需要输入监控权限";
-"permission_message" = "Tickeys Redux 需要「输入监控」权限才能检测按键并播放音效。\n\n请在 系统设置 → 隐私与安全性 → 输入监控 中授权。";
+"permission_message" = "启用「输入监控」之前，Tickeys Redux 无法检测按键或播放按键音效。\n\n请前往「系统设置 → 隐私与安全性 → 输入监控」，添加或启用 Tickeys Redux。返回并再次打开 Tickeys Redux；权限生效后即可恢复按键音效。若仍无声，请完全退出 Tickeys Redux 后重新打开。\n\n升级 Tickeys Redux 后，macOS 可能仍保留上一版本的条目。如果授权仍未生效，请移除旧的 Tickeys Redux 条目，重新添加当前应用并启用。";
+"open_input_monitoring_settings" = "打开「输入监控」设置";
+"permission_not_now" = "暂不设置";

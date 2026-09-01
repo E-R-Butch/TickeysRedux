@@ -1,3 +1,17 @@
+## 1.0.7 (2026-09-01)
+
+- Force-load ServiceManagement and repair Start at Login state handling, NSError propagation, approval guidance, and UI rollback
+- Migrate legacy 0..1 menu volume values to the canonical 0..100 percentage format
+- Retry CoreAudio initialization after login startup and rebuild audio output after device errors
+- Re-enable the keyboard event tap after timeout, user disablement, and system wake
+- Add a localized Input Monitoring recovery prompt for stale permissions after upgrades
+- Sign official releases with one persistent, free self-signed identity so future updates can retain the same Input Monitoring identity
+- Correct IOKit power message constants and acknowledge sleep notifications
+- Reopen Preferences when an LSUIElement app has no visible menu-bar icon
+- Stop leaking rebuilt NSMenu submenus
+- Synchronize version and macOS metadata and verify DMG/ZIP/checksum release artifacts
+- Add regression tests for preference migration, power constants, and bundled audio assets
+
 ## 1.0.0 (2026-05-28)
 Tickeys Redux — arm64 native port.
 

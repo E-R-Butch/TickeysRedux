@@ -35,11 +35,21 @@ Tickeys Redux 是 [Tickeys](https://github.com/yingDev/Tickeys)（应元东）�
 
 ## 安装
 
-从 [Releases](https://github.com/E-R-Butch/TickeysRedux/releases) 下载 `Tickeys.Redux.v1.0.5.dmg`，打开后把 `Tickeys Redux.app` 拖到 Applications。
+从 [Releases](https://github.com/E-R-Butch/TickeysRedux/releases) 下载最新 `.dmg`，打开后把 `Tickeys Redux.app` 拖到 Applications。
 
-首次启动时，macOS 会请求「输入监控」权限。Tickeys Redux 只需要知道“按键发生了”，不会记录文本，也不会使用麦克风。
+正式发布版使用一张长期不变的免费自签名证书，不购买 Apple Developer ID，也不做公证。如果 macOS 首次启动时拦截，请按住 Control 点击 `Tickeys Redux.app`，选择「打开」，再确认「打开」。
 
-## v1.0.5 更新
+首次启动时，macOS 会请求「输入监控」权限。Tickeys Redux 只需要知道“按键发生了”，不会记录文本，也不会使用麦克风。授权后请再次打开应用；若仍无声，请完全退出 Tickeys Redux 后重新启动。
+
+## v1.0.7 更新
+
+- 开机自启现在完整处理 `SMAppService` 状态、显示真实注册错误，并在 macOS 要求批准时打开“登录项”设置。
+- 修复从菜单栏设置音量后，重启时音量再次除以 100、几乎听不见的问题。
+- 如果登录启动时 CoreAudio 尚未就绪或输出设备中途断开，音频现在会在后台重连，不再永久无声。
+- 键盘监听被系统禁用或电脑睡眠后会自行恢复，不再重启整个进程。
+- 升级后若「输入监控」仍绑定旧版本，应用会显示可见的恢复提示并直达正确的系统设置页面。
+- 即使隐藏了菜单栏图标，再次双击应用也会打开偏好设置。
+- 修复菜单重复操作导致的对象泄漏，并强化发布包校验。
 
 | | 原版 | Redux |
 |---|---|---|
@@ -50,7 +60,7 @@ Tickeys Redux 是 [Tickeys](https://github.com/yingDev/Tickeys)（应元东）�
 | **设置界面** | 未完成的 XIB 窗口 | 🎹 **菜单栏** — 方案/音量/音调 |
 | **权限** | 无 | **输入监控**（系统原生弹窗） |
 | **更新检测** | 内置 | **已移除** |
-| **macOS 支持** | 10.10+ | **11+**（arm64 基线） |
+| **macOS 支持** | 10.10+ | **13+** |
 
 ## 使用
 
@@ -64,7 +74,7 @@ Tickeys Redux 是 [Tickeys](https://github.com/yingDev/Tickeys)（应元东）�
 
 ## 打包 App Bundle
 
-需要 Rust 1.77+。
+需要 Rust 1.85+。
 
 使用一键脚本：
 
@@ -79,7 +89,8 @@ cd TickeysRedux
 也可以手动操作（不推荐）：
 
 ```sh
-cargo build --release
+export MACOSX_DEPLOYMENT_TARGET=13.0
+cargo build --release --locked
 
 # 创建 .app 结构
 mkdir -p "Tickeys Redux.app/Contents/MacOS"
@@ -120,9 +131,11 @@ cp assets/tickeys_redux.icns "Tickeys Redux.app/Contents/Resources/tickeys.icns"
 
 ## 权限说明
 
-Tickeys Redux 使用 `CGEventTapCreate` 监听全局按键事件，需要 macOS「输入监控」权限。首次启动时系统会自动弹出权限请求，无需手动操作。
+Tickeys Redux 使用 `CGEventTapCreate` 监听全局按键事件，需要 macOS「输入监控」权限。首次启动时系统会显示授权提示；在系统设置中启用后，请再次打开应用。若仍无声，请完全退出 Tickeys Redux 后重新启动。
 
-注意：每次 `cargo build` 会改变二进制的 ad-hoc 签名哈希，重建后需重新授权。使用正式的 Developer ID 签名可消除此问题。
+每次本地 `cargo build` 仍会使用会变化的 ad-hoc 身份，因此重建后 macOS 可能要求重新授予「输入监控」权限。从 v1.0.7 起，正式发布版使用 [docs/signing.md](docs/signing.md) 记录的长期自签名身份。从旧的 ad-hoc 版本升级时需要修复一次权限；后续使用同一身份签名的版本可以继续沿用。
+
+开机自启使用 Apple 的 `SMAppService`，因此需要 macOS 13 或更高版本。v1.0.7 会显示 macOS 返回的真实注册错误，不再静默假装设置成功。
 
 ## 项目元数据
 

@@ -35,11 +35,21 @@ Menu bar -> Pitch        -> 0.5x / 1.0x / 1.5x / 2.0x
 
 ## Install
 
-Download `Tickeys.Redux.v1.0.5.dmg` from [Releases](https://github.com/E-R-Butch/TickeysRedux/releases), open it, and copy `Tickeys Redux.app` to Applications.
+Download the latest `.dmg` from [Releases](https://github.com/E-R-Butch/TickeysRedux/releases), open it, and copy `Tickeys Redux.app` to Applications.
 
-On first launch, grant **Input Monitoring** permission when macOS asks. Tickeys Redux needs this permission to know that a key was pressed; it does not record text or use the microphone.
+Official releases use a persistent, free self-signed identity—not a paid Apple Developer ID—and are not notarized. If macOS blocks the first launch, Control-click `Tickeys Redux.app`, choose **Open**, then confirm **Open**.
 
-## What's New in v1.0.5
+On first launch, grant **Input Monitoring** permission when macOS asks. Tickeys Redux needs this permission to know that a key was pressed; it does not record text or use the microphone. Open the app again after granting access; if key sounds are still silent, quit Tickeys Redux completely and relaunch it.
+
+## What's New in v1.0.7
+
+- Start at Login now uses the complete `SMAppService` state machine, reports registration errors, and opens Login Items settings when macOS approval is required.
+- Fixed menu-bar volume persistence that could make the app 100× quieter after relaunch.
+- Audio output now reconnects in the background if CoreAudio is not ready at login or the output device is lost, instead of staying permanently silent.
+- Keyboard monitoring now recovers when macOS disables the event tap and resumes cleanly after sleep instead of relaunching the process.
+- A visible recovery prompt now explains how to repair stale Input Monitoring permission after an upgrade and opens the correct System Settings page.
+- Reopening the app shows Preferences, even when the menu-bar icon is hidden.
+- Fixed a deterministic menu-object leak and hardened release packaging/verification.
 
 | | Original | Redux |
 |---|---|---|
@@ -50,7 +60,7 @@ On first launch, grant **Input Monitoring** permission when macOS asks. Tickeys 
 | **Settings** | Unfinished XIB window | 🎹 **Menu bar** — scheme/volume/pitch |
 | **Permissions** | None | **Input Monitoring** (native macOS prompt) |
 | **Update checker** | Built-in | **Removed** |
-| **macOS target** | 10.10+ | **11+** (arm64 baseline) |
+| **macOS target** | 10.10+ | **13+** |
 
 ## Usage
 
@@ -64,7 +74,7 @@ On first launch, grant **Input Monitoring** permission when macOS asks. Tickeys 
 
 ## Building the App Bundle
 
-Requires Rust 1.77+.
+Requires Rust 1.85+.
 
 ```sh
 git clone https://github.com/E-R-Butch/TickeysRedux.git
@@ -73,7 +83,7 @@ cd TickeysRedux
 ```
 
 This script handles:
-- `cargo build --release`
+- `cargo build --release --locked`
 - Creates `Tickeys Redux.app` bundle with all resources
 - Writes `Info.plist` (version read from `Cargo.toml`)
 - Ad-hoc codesigns and verifies the bundle
@@ -81,12 +91,15 @@ This script handles:
 ### Manual Build
 
 ```sh
-cargo build --release
+export MACOSX_DEPLOYMENT_TARGET=13.0
+cargo build --release --locked
 mkdir -p "Tickeys Redux.app/Contents/MacOS"
 mkdir -p "Tickeys Redux.app/Contents/Resources"
 cp target/release/tickeys-redux "Tickeys Redux.app/Contents/MacOS/"
 rsync -a --exclude='*.bak' --exclude='*.wav.bak' assets/data/ "Tickeys Redux.app/Contents/Resources/data/"
 cp assets/tickeys_redux.icns "Tickeys Redux.app/Contents/Resources/tickeys.icns"
+cp -R assets/lproj/Base.lproj "Tickeys Redux.app/Contents/Resources/Base.lproj"
+cp -R assets/lproj/zh-Hans.lproj "Tickeys Redux.app/Contents/Resources/zh-Hans.lproj"
 # Write Info.plist, then:
 codesign --force --deep --sign - "Tickeys Redux.app"
 codesign --verify --deep --strict "Tickeys Redux.app"
@@ -97,7 +110,7 @@ codesign --verify --deep --strict "Tickeys Redux.app"
 After building, verify the bundle is healthy:
 
 ```sh
-cargo build --release
+MACOSX_DEPLOYMENT_TARGET=13.0 cargo build --release --locked
 ./scripts/package_app.sh
 codesign --verify --deep --strict --verbose=2 "Tickeys Redux.app"
 plutil -lint "Tickeys Redux.app/Contents/Info.plist"
@@ -130,9 +143,11 @@ Add your own `.wav` files under `assets/data/` and edit `assets/data/schemes.jso
 
 ## Permissions
 
-Tickeys Redux uses `CGEventTapCreate` to listen for global key-down events. This requires **Input Monitoring** permission on macOS. The system prompt appears automatically on first launch. No Accessibility permission needed.
+Tickeys Redux uses `CGEventTapCreate` to listen for global key-down events. This requires **Input Monitoring** permission on macOS. The system prompt appears automatically on first launch. After enabling it, open Tickeys Redux again; if key sounds are still silent, quit the app completely and relaunch it. No Accessibility permission is needed.
 
-Note: each `cargo build` changes the binary's ad-hoc code signature hash. Re-grant Input Monitoring permission after rebuilding. A proper Developer ID signature eliminates this.
+Each local `cargo build` uses a changing ad-hoc identity, so macOS may ask you to grant Input Monitoring again after rebuilding. Official releases from v1.0.7 onward use the persistent self-signed identity documented in [docs/signing.md](docs/signing.md). Upgrading from an older ad-hoc release requires one permission repair; later releases signed with the same identity can retain it.
+
+Start at Login uses Apple's `SMAppService` API and therefore requires macOS 13 or later. v1.0.7 surfaces any registration error from macOS instead of silently showing a checked box.
 
 ## Project Metadata
 

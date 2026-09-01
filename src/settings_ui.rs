@@ -2,8 +2,8 @@
 //! Uses NSStatusBar item + NSMenu, with a MenuHandler target for actions.
 //! Menu is rebuilt on every action to keep checkmarks current.
 
-use objc2::{define_class, msg_send, sel, MainThreadOnly};
 use objc2::rc::Retained;
+use objc2::{MainThreadOnly, define_class, msg_send, sel};
 use objc2_app_kit::{NSMenu, NSMenuItem, NSStatusBar, NSStatusItem, NSVariableStatusItemLength};
 use objc2_foundation::{MainThreadMarker, NSObject, NSObjectProtocol, NSString, NSUserDefaults};
 
@@ -17,10 +17,10 @@ static mut MENU_ITEM: *mut NSStatusItem = core::ptr::null_mut();
 
 // Volume tags: 0=25%, 1=50%, 2=75%, 3=100%
 const VOL_KEYS: [(&str, f32); 4] = [
-    ("vol_25", 0.25),
-    ("vol_50", 0.5),
-    ("vol_75", 0.75),
-    ("vol_100", 1.0),
+    ("vol_25", 25.0),
+    ("vol_50", 50.0),
+    ("vol_75", 75.0),
+    ("vol_100", 100.0),
 ];
 const PITCH_KEYS: [(&str, f32); 5] = [
     ("pitch_05", 0.5),
@@ -62,10 +62,14 @@ define_class!(
         fn set_volume(&self, sender: &NSMenuItem) {
             let idx = sender.tag() as usize;
             if idx >= VOL_KEYS.len() { return; }
-            let vol = VOL_KEYS[idx].1;
+            let volume_percent = VOL_KEYS[idx].1;
 
-            unsafe { if !MENU_TICKEYS.is_null() { (*MENU_TICKEYS).set_volume(vol); } }
-            save_float("audio_volume", vol);
+            unsafe {
+                if !MENU_TICKEYS.is_null() {
+                    (*MENU_TICKEYS).set_volume(volume_percent / 100.0);
+                }
+            }
+            save_float("audio_volume", volume_percent);
             let schemes = load_schemes();
             rebuild(self, &schemes, self.mtm());
         }
@@ -101,7 +105,9 @@ fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker
     let pref_pitch = load_pref_float("audio_pitch");
 
     unsafe {
-        if MENU_ITEM.is_null() { return; }
+        if MENU_ITEM.is_null() {
+            return;
+        }
         let item: &NSStatusItem = &*MENU_ITEM;
 
         let menu = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(""));
@@ -109,16 +115,24 @@ fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker
         // Scheme submenu
         let si = NSMenuItem::initWithTitle_action_keyEquivalent(
             NSMenuItem::alloc(mtm),
-            &l10n_str("sound_scheme"), None, &NSString::from_str(""),
+            &l10n_str("sound_scheme"),
+            None,
+            &NSString::from_str(""),
         );
         let sm = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(""));
         for (i, scheme) in schemes.iter().enumerate() {
-            let cm = if scheme.name == pref_scheme { "\u{2713} " } else { "  " };
+            let cm = if scheme.name == pref_scheme {
+                "\u{2713} "
+            } else {
+                "  "
+            };
             let disp = nsstring_to_string(&l10n_str(&scheme.name));
             let title = format!("{}{}", cm, disp);
             let mi = NSMenuItem::initWithTitle_action_keyEquivalent(
-                NSMenuItem::alloc(mtm), &NSString::from_str(&title),
-                Some(sel!(changeScheme:)), &NSString::from_str(""),
+                NSMenuItem::alloc(mtm),
+                &NSString::from_str(&title),
+                Some(sel!(changeScheme:)),
+                &NSString::from_str(""),
             );
             mi.setTag(i as isize);
             mi.setTarget(Some(handler));
@@ -130,16 +144,24 @@ fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker
         // Volume submenu
         let vi = NSMenuItem::initWithTitle_action_keyEquivalent(
             NSMenuItem::alloc(mtm),
-            &l10n_str("volume"), None, &NSString::from_str(""),
+            &l10n_str("volume"),
+            None,
+            &NSString::from_str(""),
         );
         let vm = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(""));
         for (i, (key, v)) in VOL_KEYS.iter().enumerate() {
-            let cm = if (*v - pref_vol).abs() < 0.01 { "\u{2713} " } else { "  " };
+            let cm = if (*v - pref_vol).abs() < 0.01 {
+                "\u{2713} "
+            } else {
+                "  "
+            };
             let label = nsstring_to_string(&l10n_str(key));
             let title = format!("{}{}", cm, label);
             let mi = NSMenuItem::initWithTitle_action_keyEquivalent(
-                NSMenuItem::alloc(mtm), &NSString::from_str(&title),
-                Some(sel!(setVolume:)), &NSString::from_str(""),
+                NSMenuItem::alloc(mtm),
+                &NSString::from_str(&title),
+                Some(sel!(setVolume:)),
+                &NSString::from_str(""),
             );
             mi.setTag(i as isize);
             mi.setTarget(Some(handler));
@@ -151,16 +173,24 @@ fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker
         // Pitch submenu
         let pi = NSMenuItem::initWithTitle_action_keyEquivalent(
             NSMenuItem::alloc(mtm),
-            &l10n_str("pitch"), None, &NSString::from_str(""),
+            &l10n_str("pitch"),
+            None,
+            &NSString::from_str(""),
         );
         let pm = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(""));
         for (i, (key, p)) in PITCH_KEYS.iter().enumerate() {
-            let cm = if (*p - pref_pitch).abs() < 0.01 { "\u{2713} " } else { "  " };
+            let cm = if (*p - pref_pitch).abs() < 0.01 {
+                "\u{2713} "
+            } else {
+                "  "
+            };
             let label = nsstring_to_string(&l10n_str(key));
             let title = format!("{}{}", cm, label);
             let mi = NSMenuItem::initWithTitle_action_keyEquivalent(
-                NSMenuItem::alloc(mtm), &NSString::from_str(&title),
-                Some(sel!(setPitch:)), &NSString::from_str(""),
+                NSMenuItem::alloc(mtm),
+                &NSString::from_str(&title),
+                Some(sel!(setPitch:)),
+                &NSString::from_str(""),
             );
             mi.setTag(i as isize);
             mi.setTarget(Some(handler));
@@ -184,16 +214,15 @@ fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker
         let q = NSMenuItem::initWithTitle_action_keyEquivalent(
             NSMenuItem::alloc(mtm),
             &l10n_str("quit_tickeys"),
-            Some(sel!(terminate:)), &NSString::from_str("q"),
+            Some(sel!(terminate:)),
+            &NSString::from_str("q"),
         );
         menu.addItem(&q);
 
         item.setMenu(Some(&menu));
 
-        std::mem::forget(sm);
-        std::mem::forget(vm);
-        std::mem::forget(pm);
-        // Note: item lives forever via MENU_ITEM, don't forget it here
+        // The parent menu retains each submenu. Let the local Retained values
+        // drop so rebuilding this menu does not leak three objects per action.
     }
 }
 
@@ -203,19 +232,25 @@ fn save_string(key: &str, val: &str) {
     let ud = NSUserDefaults::standardUserDefaults();
     let k = NSString::from_str(key);
     let v = NSString::from_str(val);
-    unsafe { let _: () = msg_send![&ud, setObject: &*v, forKey: &*k]; }
+    unsafe {
+        let _: () = msg_send![&ud, setObject: &*v, forKey: &*k];
+    }
 }
 
 fn save_float(key: &str, val: f32) {
     let ud = NSUserDefaults::standardUserDefaults();
     let k = NSString::from_str(key);
-    unsafe { let _: () = msg_send![&ud, setDouble: val as f64, forKey: &*k]; }
+    unsafe {
+        let _: () = msg_send![&ud, setDouble: val as f64, forKey: &*k];
+    }
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
 pub fn setup_menu(mtm: MainThreadMarker, tickeys_ptr: *mut Tickeys) {
-    unsafe { MENU_TICKEYS = tickeys_ptr; }
+    unsafe {
+        MENU_TICKEYS = tickeys_ptr;
+    }
 
     let schemes = load_schemes();
     let handler: Retained<MenuHandler> = unsafe { msg_send![MenuHandler::alloc(mtm), init] };
@@ -223,7 +258,8 @@ pub fn setup_menu(mtm: MainThreadMarker, tickeys_ptr: *mut Tickeys) {
     // Create the status bar item once and store it.
     unsafe {
         let status_bar = NSStatusBar::systemStatusBar();
-        let item: Retained<NSStatusItem> = msg_send![&status_bar, statusItemWithLength: NSVariableStatusItemLength];
+        let item: Retained<NSStatusItem> =
+            msg_send![&status_bar, statusItemWithLength: NSVariableStatusItemLength];
         let button = item.button(mtm).expect("must have button");
         button.setTitle(&NSString::from_str("\u{1F3B9}"));
         let raw = &*item as *const NSStatusItem as *mut NSStatusItem;
@@ -244,7 +280,9 @@ pub fn setup_menu(mtm: MainThreadMarker, tickeys_ptr: *mut Tickeys) {
 /// Show or hide the menu bar icon.
 pub fn set_menu_bar_visible(mtm: MainThreadMarker, visible: bool) {
     unsafe {
-        if MENU_ITEM.is_null() { return; }
+        if MENU_ITEM.is_null() {
+            return;
+        }
         let item: &NSStatusItem = &*MENU_ITEM;
         let button = item.button(mtm);
         if let Some(btn) = button {
@@ -254,7 +292,7 @@ pub fn set_menu_bar_visible(mtm: MainThreadMarker, visible: bool) {
         let ud = NSUserDefaults::standardUserDefaults();
         let k = NSString::from_str("show_in_menu_bar");
         let v: *mut objc2::runtime::AnyObject =
-            msg_send![objc2::runtime::AnyClass::get(std::ffi::CStr::from_bytes_with_nul(b"NSNumber\0").unwrap()).unwrap(), numberWithBool: visible];
+            msg_send![objc2::runtime::AnyClass::get(c"NSNumber").unwrap(), numberWithBool: visible];
         let _: () = msg_send![&ud, setObject: v, forKey: &*k];
     }
 }
@@ -264,7 +302,11 @@ fn load_pref_bool(key: &str, default: bool) -> bool {
         let ud = NSUserDefaults::standardUserDefaults();
         let k = NSString::from_str(key);
         let val: *mut objc2::runtime::AnyObject = msg_send![&ud, objectForKey: &*k];
-        if val.is_null() { default } else { msg_send![val, boolValue] }
+        if val.is_null() {
+            default
+        } else {
+            msg_send![val, boolValue]
+        }
     }
 }
 
@@ -295,6 +337,11 @@ fn load_pref_float(key: &str) -> f32 {
     unsafe {
         let ud = NSUserDefaults::standardUserDefaults();
         let k = NSString::from_str(key);
-        msg_send![&ud, floatForKey: &*k]
+        let value: f32 = msg_send![&ud, floatForKey: &*k];
+        if key == "audio_volume" {
+            crate::pref::normalize_volume_percent(value).0
+        } else {
+            value
+        }
     }
 }

@@ -18,6 +18,12 @@
 /* General tab */
 "start_at_login" = "Start at Login";
 "show_in_menu_bar" = "Show in Menu Bar";
+"login_item_approval_title" = "Approval Required";
+"login_item_approval_message" = "Tickeys Redux is registered to start at login, but macOS requires your approval in System Settings → General → Login Items.";
+"open_login_items_settings" = "Open Login Items";
+"login_item_error_title" = "Could Not Update Login Item";
+"ok" = "OK";
+"cancel" = "Cancel";
 
 /* Volume labels */
 "vol_25" = "25%";
@@ -48,4 +54,6 @@
 
 /* Permissions */
 "permission_title" = "Input Monitoring Required";
-"permission_message" = "Tickeys Redux needs Input Monitoring permission to detect keypresses for sound effects.\n\nGrant permission in System Settings → Privacy & Security → Input Monitoring.";
+"permission_message" = "Tickeys Redux cannot detect keypresses or play key sounds until Input Monitoring is enabled.\n\nOpen System Settings → Privacy & Security → Input Monitoring, then add or enable Tickeys Redux. Return and open Tickeys Redux again; key sounds will resume as soon as permission is available. If it is still silent, quit Tickeys Redux completely and reopen it.\n\nAfter upgrading Tickeys Redux, macOS may keep an entry for the previous build. If permission still does not work, remove the old Tickeys Redux entry, add the current app again, and enable it.";
+"open_input_monitoring_settings" = "Open Input Monitoring Settings";
+"permission_not_now" = "Not Now";
