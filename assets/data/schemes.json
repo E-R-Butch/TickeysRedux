@@ -20,7 +20,7 @@
     },
     {
         "name": "typewriter",
-        "display_name": "typewriter",
+        "display_name": "Synth Typewriter",
         "files": [
             "key-new-05.wav",
             "key-new-04.wav",
@@ -57,7 +57,7 @@
     },
     {
         "name": "sword",
-        "display_name": "sword",
+        "display_name": "Synth Blades",
         "files": [
             "1.wav",
             "2.wav",
@@ -78,7 +78,7 @@
     },
     {
         "name": "Cherry_G80_3000",
-        "display_name": "Cherry G80-3000",
+        "display_name": "Synth Click",
         "files": [
             "G80-3000.wav",
             "G80-3000_fast1.wav",
@@ -94,7 +94,7 @@
     },
     {
         "name": "Cherry_G80_3494",
-        "display_name": "Cherry G80-3494",
+        "display_name": "Synth Thock",
         "files": [
             "G80-3494.wav",
             "G80-3494_fast1.wav",
@@ -131,7 +131,7 @@
     },
     {
         "name": "starwars",
-        "display_name": "Star Wars",
+        "display_name": "Synth Space",
         "files": [
             "a.wav",
             "b.wav"

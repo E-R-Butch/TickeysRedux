@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "description": "Pinned upstream licensing declarations for crates that omitted license files, with the canonical terms explicitly linked by those declarations. No copyright holder has been inferred or substituted.",
+  "files": {
+    "upstream/dasp_sample-97c3bb9b2363c0b46ac1633858bf1054fd02a980/LICENSE-APACHE": {
+      "url": "https://raw.githubusercontent.com/RustAudio/sample/97c3bb9b2363c0b46ac1633858bf1054fd02a980/LICENSE-APACHE",
+      "sha256": "756c8d2ab2dc24f256e1455b5f03937f4933d83d7bc9f2d55009fc962377d512"
+    },
+    "upstream/dasp_sample-97c3bb9b2363c0b46ac1633858bf1054fd02a980/LICENSE-MIT": {
+      "url": "https://raw.githubusercontent.com/RustAudio/sample/97c3bb9b2363c0b46ac1633858bf1054fd02a980/LICENSE-MIT",
+      "sha256": "b1d6df41ed3aa96806e74c729444d7c121d90e6660a6aed01d298e03fde475a0"
+    },
+    "upstream/objc2-7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md": {
+      "url": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+      "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54"
+    },
+    "upstream/objc2-8852b424193ca41602281b3d7540d7c8ed51e49a/LICENSE.md": {
+      "url": "https://raw.githubusercontent.com/madsmtm/objc2/8852b424193ca41602281b3d7540d7c8ed51e49a/LICENSE.md",
+      "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54"
+    },
+    "upstream/objc2-8d214f5477365ffcbcbb7de058c86ed9a518efb7/LICENSE.md": {
+      "url": "https://raw.githubusercontent.com/madsmtm/objc2/8d214f5477365ffcbcbb7de058c86ed9a518efb7/LICENSE.md",
+      "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54"
+    },
+    "upstream/referenced/Apache-2.0.txt": {
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    "upstream/referenced/MIT.txt": {
+      "url": "https://opensource.org/license/mit",
+      "sha256": "4790c01c0726db5d666ede1ad9b0875ed4789b89c9a38a37c7b214b707b69249",
+      "extraction": "Verbatim text of the four license paragraphs; HTML entities decoded. Upstream placeholders retained."
+    },
+    "upstream/referenced/Zlib.txt": {
+      "url": "https://zlib.net/zlib_license.html",
+      "sha256": "c4b5efd52d8d665f17546e69a3a8fc1b9032386dc9692d9c7a2d9c801cbadfe4",
+      "extraction": "Verbatim PRE block from the exact license page linked by objc2. Its zlib author notice is retained, not attributed to objc2."
+    }
+  },
+  "packages": [
+    {
+      "name": "dasp_sample",
+      "version": "0.11.0",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/RustAudio/sample",
+      "revision": "97c3bb9b2363c0b46ac1633858bf1054fd02a980",
+      "path_in_vcs": "",
+      "files": {
+        "LICENSE-APACHE": "upstream/dasp_sample-97c3bb9b2363c0b46ac1633858bf1054fd02a980/LICENSE-APACHE",
+        "LICENSE-MIT": "upstream/dasp_sample-97c3bb9b2363c0b46ac1633858bf1054fd02a980/LICENSE-MIT"
+      }
+    },
+    {
+      "name": "dispatch2",
+      "version": "0.3.1",
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "repository": "https://github.com/madsmtm/objc2",
+      "revision": "8852b424193ca41602281b3d7540d7c8ed51e49a",
+      "path_in_vcs": "crates/dispatch2",
+      "files": {
+        "LICENSE.md": "upstream/objc2-8852b424193ca41602281b3d7540d7c8ed51e49a/LICENSE.md",
+        "LICENSE-MIT-REFERENCE.txt": "upstream/referenced/MIT.txt",
+        "LICENSE-APACHE-REFERENCE.txt": "upstream/referenced/Apache-2.0.txt",
+        "LICENSE-ZLIB-REFERENCE.txt": "upstream/referenced/Zlib.txt"
+      }
+    },
+    {
+      "name": "objc2",
+      "version": "0.6.4",
+      "license": "MIT",
+      "repository": "https://github.com/madsmtm/objc2",
+      "revision": "8852b424193ca41602281b3d7540d7c8ed51e49a",
+      "path_in_vcs": "crates/objc2",
+      "files": {
+        "LICENSE.md": "upstream/objc2-8852b424193ca41602281b3d7540d7c8ed51e49a/LICENSE.md",
+        "LICENSE-MIT-REFERENCE.txt": "upstream/referenced/MIT.txt"
+      }
+    },
+    {
+      "name": "objc2-app-kit",
+      "version": "0.3.2",
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "repository": "https://github.com/madsmtm/objc2",
+      "revision": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+      "path_in_vcs": "framework-crates/objc2-app-kit",
+      "files": {
+        "LICENSE.md": "upstream/objc2-7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+        "LICENSE-MIT-REFERENCE.txt": "upstream/referenced/MIT.txt",
+        "LICENSE-APACHE-REFERENCE.txt": "upstream/referenced/Apache-2.0.txt",
+        "LICENSE-ZLIB-REFERENCE.txt": "upstream/referenced/Zlib.txt"
+      }
+    },
+    {
+      "name": "objc2-core-foundation",
+      "version": "0.3.2",
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "repository": "https://github.com/madsmtm/objc2",
+      "revision": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+      "path_in_vcs": "framework-crates/objc2-core-foundation",
+      "files": {
+        "LICENSE.md": "upstream/objc2-7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+        "LICENSE-MIT-REFERENCE.txt": "upstream/referenced/MIT.txt",
+        "LICENSE-APACHE-REFERENCE.txt": "upstream/referenced/Apache-2.0.txt",
+        "LICENSE-ZLIB-REFERENCE.txt": "upstream/referenced/Zlib.txt"
+      }
+    },
+    {
+      "name": "objc2-encode",
+      "version": "4.1.0",
+      "license": "MIT",
+      "repository": "https://github.com/madsmtm/objc2",
+      "revision": "8d214f5477365ffcbcbb7de058c86ed9a518efb7",
+      "path_in_vcs": "crates/objc2-encode",
+      "files": {
+        "LICENSE.md": "upstream/objc2-8d214f5477365ffcbcbb7de058c86ed9a518efb7/LICENSE.md",
+        "LICENSE-MIT-REFERENCE.txt": "upstream/referenced/MIT.txt"
+      }
+    },
+    {
+      "name": "objc2-foundation",
+      "version": "0.3.2",
+      "license": "MIT",
+      "repository": "https://github.com/madsmtm/objc2",
+      "revision": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+      "path_in_vcs": "framework-crates/objc2-foundation",
+      "files": {
+        "LICENSE.md": "upstream/objc2-7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+        "LICENSE-MIT-REFERENCE.txt": "upstream/referenced/MIT.txt"
+      }
+    }
+  ]
+}

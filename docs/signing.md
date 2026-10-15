@@ -17,13 +17,16 @@ The self-signed identity provides continuity and prevents an ad-hoc application 
 
 - On Apple Silicon, a bare `cargo build` produces a linker-signed ad-hoc Mach-O, not the project's persistent release identity or a complete App Bundle.
 - `scripts/package_app.sh` creates an ad-hoc-signed local app unless `TICKEYS_SIGNING_IDENTITY` is supplied.
-- `scripts/package_release.sh` defaults both the signing identity and expected certificate SHA-1 to the official value, then verifies the resulting designated requirement and bundle identifier.
+- `scripts/package_release.sh` and `scripts/package_app.sh --official` enforce the SHA-1 and SHA-256 constants in `scripts/release_policy.py`. Environment overrides cannot change them. The actual leaf certificate and designated requirement are checked after signing and after unpacking ZIP/mounting DMG.
+- Official builds require a clean worktree (including untracked files) and an annotated `v<version>` tag pointing at the exact build commit. The version, commit, dirty flag, target, and toolchain versions are included in `Resources/build-info.json`; source commit/dirty state are also in Info.plist.
+- Local builds are created in separate directories under `dist/builds/`; earlier apps are retained. Official ZIP/DMG/checksum/metadata files cannot be overwritten by rerunning the script.
+- A local build rejects `TICKEYS_EXPECTED_SIGNING_CERT_SHA1`; use `--official` when asserting the release identity rather than relying on a local signature check.
 - Self-signed builds explicitly disable Apple's timestamp service because it does not support this non-Apple identity.
 
-## Audited release-process limitation
+## Original signing Mac
 
-In v1.0.7, `scripts/package_release.sh` still permits the environment to override both `TICKEYS_SIGNING_IDENTITY` and `TICKEYS_EXPECTED_SIGNING_CERT_SHA1`. If both are changed together, the checks only prove that those two override values agree; they do not enforce the certificate recorded above.
+If this identity and its private key are absent, the official packaging command stops. Do not create a replacement identity or label an ad-hoc build as an official release. Run the release procedure on the maintainer's original signing Mac, or use an existing encrypted backup through the maintainer's normal keychain recovery process. Private keys and passwords must not be added to the repository or release artifacts.
 
-Until the script is hardened, official release builds must start with both variables unset and the final certificate fingerprint and designated requirement must be checked against the public identity above. The next maintenance release should make the expected SHA-1 a non-overridable source constant; an intentional certificate rotation should require a reviewed source change.
+See [the release procedure](releasing.md) for preflight, tagged builds, artifact verification and the remaining manual acceptance checks.
 
-The published v1.0.7 DMG and ZIP were verified against the public identity above. This limitation concerns future release procedure, not the identity of the existing v1.0.7 artifacts.
+In v1.0.7 both identity environment values could be overridden together. v1.0.8 removes this bypass; changing the official identity now requires a reviewed source change to both fingerprints. This does not change the signing identity of already-published v1.0.7 artifacts.
