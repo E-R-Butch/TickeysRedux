@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: macos-15
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        toolchain: [stable, "1.85.0"]
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "13.0"
+      RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install Rust
+        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component rustfmt --component clippy
+      - name: Fetch locked sources for offline license verification
+        run: cargo fetch --locked
+      - name: Check formatting
+        if: matrix.toolchain == 'stable'
+        run: cargo fmt --all -- --check
+      - name: Test (including every bundled WAV)
+        run: cargo test --all-targets --locked
+      - name: Verify audio provenance and dependency notices
+        run: |
+          python3 scripts/generate_audio_assets.py --check
+          python3 scripts/generate_notices.py --check
+          python3 -m unittest discover -s scripts/tests -v
+      - name: Clippy
+        if: matrix.toolchain == 'stable'
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: Build arm64
+        run: |
+          rustup target add aarch64-apple-darwin
+          cargo build --release --locked --target aarch64-apple-darwin
+          test "$(lipo -archs target/aarch64-apple-darwin/release/tickeys-redux)" = arm64
+      - name: Verify local App Bundle
+        if: matrix.toolchain == 'stable'
+        run: ./scripts/package_app.sh

@@ -1,76 +1,159 @@
 //! Tickeys Redux — arm64 port with objc2 + rodio.
 
+use std::cell::RefCell;
 use std::ffi::c_void;
+use std::sync::atomic::{AtomicU8, Ordering};
 
 use objc2::rc::{Retained, autoreleasepool};
 use objc2::runtime::{AnyObject, ProtocolObject};
-use objc2::{ClassType, MainThreadOnly, define_class, msg_send};
+use objc2::{ClassType, MainThreadOnly, define_class, msg_send, sel};
 use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationDelegate};
 use objc2_foundation::{MainThreadMarker, NSNotification, NSObject, NSObjectProtocol};
 
+mod app_state;
 mod cocoa_util;
 mod core_foundation;
 mod core_graphics;
 mod event_tap;
+mod input_recovery;
 mod iokit;
 mod launcher;
 mod pref;
 mod settings_ui;
 mod settings_window;
-mod tickeys;
+use tickeys_lib as tickeys;
 
 use crate::cocoa_util::*;
 use crate::core_graphics::*;
-use crate::pref::Pref;
-use crate::tickeys::{AudioScheme, Tickeys};
+use crate::input_recovery::{RecoveryOutcome, RecoveryPolicy, recover_monitor};
+use crate::tickeys::AudioScheme;
 
 // ── Globals ──────────────────────────────────────────────────────────────────
 
-static mut TICKEYS_PTR: Option<*mut Tickeys> = None;
 static mut KEYBOARD_MONITOR: Option<crate::event_tap::KeyboardMonitor> = None;
 static mut POWER_MONITOR: Option<iokit::SystemPowerMonitor> = None;
-static mut INPUT_MONITORING_ALERT_VISIBLE: bool = false;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum KeyboardMonitorEnsurePlan {
-    ReuseEnabled,
-    ReenableExisting,
-    CreateNew,
-    WaitForAlert,
+// All mutable input state is owned by the main run loop. Only the permission
+// request's completion flag crosses threads.
+thread_local! {
+    static INPUT_RECOVERY_POLICY: RefCell<RecoveryPolicy> = const { RefCell::new(RecoveryPolicy::new()) };
 }
+static mut INPUT_RECOVERY_TARGET: *const AppDelegate = std::ptr::null();
+static mut INPUT_RECOVERY_TIMER: *mut AnyObject = std::ptr::null_mut();
+const PERMISSION_IDLE: u8 = 0;
+const PERMISSION_PENDING: u8 = 1;
+const PERMISSION_FINISHED: u8 = 2;
+static INPUT_PERMISSION_REQUEST: AtomicU8 = AtomicU8::new(PERMISSION_IDLE);
 
-fn keyboard_monitor_ensure_plan(
-    has_monitor: bool,
-    is_enabled: bool,
-    alert_visible: bool,
-) -> KeyboardMonitorEnsurePlan {
-    if has_monitor {
-        if is_enabled {
-            KeyboardMonitorEnsurePlan::ReuseEnabled
-        } else {
-            KeyboardMonitorEnsurePlan::ReenableExisting
+/// Queue recovery instead of running it in the event tap / IOKit callback.
+/// The one-shot timer is retained by the main run loop until it fires.
+fn schedule_input_recovery(_mtm: MainThreadMarker, delay: f64) {
+    unsafe {
+        if INPUT_RECOVERY_TARGET.is_null() || !INPUT_RECOVERY_TIMER.is_null() {
+            return;
         }
-    } else if alert_visible {
-        KeyboardMonitorEnsurePlan::WaitForAlert
-    } else {
-        KeyboardMonitorEnsurePlan::CreateNew
+        if INPUT_RECOVERY_POLICY.with(|policy| policy.borrow().is_sleeping()) {
+            return;
+        }
+        INPUT_RECOVERY_TIMER = msg_send![
+            objc2::runtime::AnyClass::get(c"NSTimer").unwrap(),
+            scheduledTimerWithTimeInterval: delay,
+            target: &*INPUT_RECOVERY_TARGET,
+            selector: sel!(recoverInputMonitoring:),
+            userInfo: std::ptr::null::<AnyObject>(),
+            repeats: false
+        ];
     }
 }
 
-fn should_present_input_monitoring_alert(alert_visible: bool) -> bool {
-    !alert_visible
+/// Shared entry point for startup, activation, reopen, wake and Preferences.
+/// It only schedules work, so callers never nest permission dialogs or drop an
+/// event tap while its callback is still on the stack.
+pub fn recheck_input_monitoring(mtm: MainThreadMarker) {
+    INPUT_RECOVERY_POLICY.with(|policy| policy.borrow_mut().begin_recheck());
+    schedule_input_recovery(mtm, 0.01);
 }
 
-unsafe fn set_keyboard_monitor_enabled(enabled: bool) {
+fn request_input_permission_once(mtm: MainThreadMarker) {
+    let should_request =
+        INPUT_RECOVERY_POLICY.with(|policy| policy.borrow_mut().request_permission_once());
+    if !should_request {
+        return;
+    }
+    INPUT_PERMISSION_REQUEST.store(PERMISSION_PENDING, Ordering::Release);
+    // CoreGraphics' permission request can wait for user interaction. Keep it
+    // off the application thread; only the system prompt runs here, no AppKit.
+    let request = std::thread::Builder::new()
+        .name("input-permission".into())
+        .spawn(|| {
+            autoreleasepool(|_| unsafe { CGRequestListenEventAccess() });
+            INPUT_PERMISSION_REQUEST.store(PERMISSION_FINISHED, Ordering::Release);
+        });
+    if let Err(error) = request {
+        INPUT_PERMISSION_REQUEST.store(PERMISSION_FINISHED, Ordering::Release);
+        eprintln!("Input Monitoring permission request failed: {error}");
+    }
+    // Preferences supplies a persistent explanation, status and Settings link.
+    // It remains interactive and can be closed without dismissing a modal alert.
+    settings_window::show_prefs_window(mtm);
+}
+
+pub fn open_input_monitoring_settings(mtm: MainThreadMarker) {
+    request_input_permission_once(mtm);
     unsafe {
+        let workspace: *mut AnyObject = msg_send![
+            objc2::runtime::AnyClass::get(c"NSWorkspace").unwrap(),
+            sharedWorkspace
+        ];
+        let url: *mut AnyObject = msg_send![
+            objc2::runtime::AnyClass::get(c"NSURL").unwrap(),
+            URLWithString: &*nsstr(
+                "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+            )
+        ];
+        let _: bool = msg_send![workspace, openURL: url];
+    }
+    recheck_input_monitoring(mtm);
+}
+
+fn recover_input_monitoring(mtm: MainThreadMarker) {
+    if INPUT_RECOVERY_POLICY.with(|policy| policy.borrow().is_sleeping()) {
+        return;
+    }
+    // Consume completion before preflight. A request finishing during preflight
+    // retains FINISHED and schedules one final check, avoiding a lost grant.
+    let _ = INPUT_PERMISSION_REQUEST.compare_exchange(
+        PERMISSION_FINISHED,
+        PERMISSION_IDLE,
+        Ordering::AcqRel,
+        Ordering::Acquire,
+    );
+    let outcome = unsafe {
         let slot = &raw mut KEYBOARD_MONITOR;
-        if let Some(monitor) = (*slot).as_ref() {
-            monitor.set_enabled(enabled);
-            if enabled && !monitor.is_enabled() {
-                eprintln!("KeyboardMonitor could not be re-enabled");
+        recover_monitor(&mut *slot, CGPreflightListenEventAccess(), || {
+            event_tap::KeyboardMonitor::new(mtm, handle_keyboard_event, std::ptr::null_mut())
+        })
+    };
+    match outcome {
+        RecoveryOutcome::Active => {}
+        RecoveryOutcome::PermissionMissing => {
+            request_input_permission_once(mtm);
+            // Poll only while the one permitted system request is outstanding.
+            // A denial ends polling; granting access later is picked up on
+            // activation, reopening Preferences or wake.
+            if INPUT_PERMISSION_REQUEST.load(Ordering::Acquire) != PERMISSION_IDLE {
+                schedule_input_recovery(mtm, 0.5);
+            }
+        }
+        RecoveryOutcome::Failed(error) => {
+            eprintln!("KeyboardMonitor recovery failed: {error}");
+            let retry_delay =
+                INPUT_RECOVERY_POLICY.with(|policy| policy.borrow_mut().next_retry_delay());
+            if let Some(delay) = retry_delay {
+                schedule_input_recovery(mtm, delay);
             }
         }
     }
+    settings_window::refresh(mtm);
 }
 
 // CGEventTap callback — called on main run loop thread
@@ -82,7 +165,9 @@ extern "C" fn handle_keyboard_event(
 ) -> CGEventRef {
     match etype {
         CGEventType::kCGEventTapDisabledByTimeout | CGEventType::kCGEventTapDisabledByUserInput => {
-            unsafe { set_keyboard_monitor_enabled(true) };
+            if let Some(mtm) = MainThreadMarker::new() {
+                recheck_input_monitoring(mtm);
+            }
             return event;
         }
         CGEventType::kCGEventKeyDown => {}
@@ -91,12 +176,7 @@ extern "C" fn handle_keyboard_event(
 
     let keycode =
         unsafe { CGEventGetIntegerValueField(event, CGEventField::kCGKeyboardEventKeycode) } as u8;
-    unsafe {
-        if let Some(ptr) = TICKEYS_PTR {
-            let tickeys: &mut Tickeys = &mut *ptr;
-            tickeys.handle_keydown(keycode);
-        }
-    }
+    app_state::handle_keydown(keycode);
     event
 }
 
@@ -106,120 +186,24 @@ extern "C" fn handle_power_event(root_port: iokit::io_connect_t, msg: u32, msg_a
             let _ = iokit::IOAllowPowerChange(root_port, msg_args as isize);
         },
         iokit::kIOMessageSystemWillSleep => unsafe {
-            set_keyboard_monitor_enabled(false);
+            INPUT_RECOVERY_POLICY.with(|policy| policy.borrow_mut().set_sleeping(true));
+            let slot = &raw const KEYBOARD_MONITOR;
+            if let Some(monitor) = (*slot).as_ref() {
+                monitor.set_enabled(false);
+            }
             let _ = iokit::IOAllowPowerChange(root_port, msg_args as isize);
         },
-        iokit::kIOMessageSystemHasPoweredOn => unsafe {
-            set_keyboard_monitor_enabled(true);
-        },
+        iokit::kIOMessageSystemHasPoweredOn => {
+            INPUT_RECOVERY_POLICY.with(|policy| policy.borrow_mut().set_sleeping(false));
+            if let Some(mtm) = MainThreadMarker::new() {
+                recheck_input_monitoring(mtm);
+            }
+        }
         _ => {}
     }
 }
 
 // ── AppDelegate ──────────────────────────────────────────────────────────────
-
-fn show_input_monitoring_permission_alert() {
-    unsafe {
-        let alert_visible = &raw mut INPUT_MONITORING_ALERT_VISIBLE;
-        if !should_present_input_monitoring_alert(*alert_visible) {
-            return;
-        }
-        *alert_visible = true;
-
-        // LSUIElement apps do not have a Dock icon, so explicitly activate the
-        // app to keep this recovery prompt visible even if the menu icon is hidden.
-        let app: *mut AnyObject = msg_send![
-            objc2::runtime::AnyClass::get(c"NSApplication").unwrap(),
-            sharedApplication
-        ];
-        let _: () = msg_send![app, activateIgnoringOtherApps: true];
-
-        let alert: Retained<AnyObject> = msg_send![
-            msg_send![objc2::runtime::AnyClass::get(c"NSAlert").unwrap(), alloc],
-            init
-        ];
-        let _: () = msg_send![&alert, setMessageText: &*l10n_str("permission_title")];
-        let _: () = msg_send![&alert, setInformativeText: &*l10n_str("permission_message")];
-        let _: () = msg_send![
-            &alert,
-            addButtonWithTitle: &*l10n_str("open_input_monitoring_settings")
-        ];
-        let _: () = msg_send![&alert, addButtonWithTitle: &*l10n_str("permission_not_now")];
-
-        let response: isize = msg_send![&alert, runModal];
-        *alert_visible = false;
-        if response == 1000 {
-            let workspace_class = objc2::runtime::AnyClass::get(c"NSWorkspace").unwrap();
-            let workspace: *mut AnyObject = msg_send![workspace_class, sharedWorkspace];
-            let url_class = objc2::runtime::AnyClass::get(c"NSURL").unwrap();
-            let url: *mut AnyObject = msg_send![
-                url_class,
-                URLWithString: &*nsstr(
-                    "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
-                )
-            ];
-            let _: bool = msg_send![workspace, openURL: url];
-        }
-    }
-}
-
-fn ensure_keyboard_monitor() -> bool {
-    let (has_monitor, is_enabled, alert_visible) = unsafe {
-        let monitor_slot = &raw const KEYBOARD_MONITOR;
-        let alert_slot = &raw const INPUT_MONITORING_ALERT_VISIBLE;
-        match (*monitor_slot).as_ref() {
-            Some(monitor) => (true, monitor.is_enabled(), *alert_slot),
-            None => (false, false, *alert_slot),
-        }
-    };
-
-    match keyboard_monitor_ensure_plan(has_monitor, is_enabled, alert_visible) {
-        KeyboardMonitorEnsurePlan::ReuseEnabled => return true,
-        KeyboardMonitorEnsurePlan::WaitForAlert => return false,
-        KeyboardMonitorEnsurePlan::ReenableExisting => {
-            let reenabled = unsafe {
-                let monitor_slot = &raw mut KEYBOARD_MONITOR;
-                if let Some(monitor) = (*monitor_slot).as_ref() {
-                    monitor.set_enabled(true);
-                    monitor.is_enabled()
-                } else {
-                    false
-                }
-            };
-            if reenabled {
-                println!("KeyboardMonitor re-enabled");
-                return true;
-            }
-
-            // ensure_keyboard_monitor is called from AppDelegate methods on
-            // the main thread, never from the event callback. It is therefore
-            // safe to remove the stale tap before constructing a replacement.
-            unsafe {
-                KEYBOARD_MONITOR = None;
-            }
-            if alert_visible {
-                return false;
-            }
-        }
-        KeyboardMonitorEnsurePlan::CreateNew => {}
-    }
-
-    use crate::event_tap::KeyboardMonitor;
-    match KeyboardMonitor::new(handle_keyboard_event, std::ptr::null_mut()) {
-        Ok(monitor) => {
-            unsafe {
-                KEYBOARD_MONITOR = Some(monitor);
-            }
-            println!("KeyboardMonitor started");
-            true
-        }
-        Err(error) => {
-            eprintln!("KeyboardMonitor failed: {error}");
-            show_input_monitoring_permission_alert();
-            false
-        }
-    }
-}
 
 define_class!(
     #[unsafe(super = NSObject)]
@@ -240,24 +224,10 @@ define_class!(
                 tickeys::spawn_audio_worker().expect("failed to start audio worker");
 
             let schemes = Self::load_schemes();
-            let pref = Pref::load(&schemes);
+            app_state::initialize(schemes, audio_tx);
 
-            let mut tickeys_box = Box::new(Tickeys::new(schemes, audio_tx));
-            tickeys_box.load_scheme(
-                &get_res_path(&format!("data/{}", &pref.scheme)),
-                &pref.scheme,
-            );
-            tickeys_box.set_volume(pref.volume / 100.0);
-            tickeys_box.set_pitch(pref.pitch);
-
-            let ptr = Box::into_raw(tickeys_box);
-            unsafe {
-                TICKEYS_PTR = Some(ptr);
-            }
-
-            // Create the keyboard monitor on the main thread. If permission is
-            // missing, keep running so reopen can retry after the user grants it.
-            ensure_keyboard_monitor();
+            unsafe { INPUT_RECOVERY_TARGET = self };
+            recheck_input_monitoring(mtm);
 
             match iokit::SystemPowerMonitor::new(handle_power_event) {
                 Ok(monitor) => unsafe {
@@ -265,37 +235,58 @@ define_class!(
                 },
                 Err(error) => eprintln!("Power monitor failed: {error}"),
             }
-            settings_ui::setup_menu(mtm, ptr);
+            settings_ui::setup_menu(mtm);
             println!("{}", nsstring_to_string(&l10n_str("running")));
         }
 
         #[unsafe(method(applicationWillTerminate:))]
         fn will_terminate(&self, _notification: &NSNotification) {
             unsafe {
+                INPUT_RECOVERY_TARGET = std::ptr::null();
+                if !INPUT_RECOVERY_TIMER.is_null() {
+                    let _: () = msg_send![INPUT_RECOVERY_TIMER, invalidate];
+                    INPUT_RECOVERY_TIMER = std::ptr::null_mut();
+                }
                 POWER_MONITOR = None;
                 // Drop keyboard monitor first (disables event tap)
                 KEYBOARD_MONITOR = None;
-                let ptr = std::ptr::replace(&raw mut TICKEYS_PTR, None);
-                if let Some(p) = ptr {
-                    drop(Box::from_raw(p));
-                }
+                app_state::shutdown();
             }
+        }
+
+        #[unsafe(method(applicationDidBecomeActive:))]
+        fn did_become_active(&self, _notification: &NSNotification) {
+            recheck_input_monitoring(self.mtm());
         }
 
         #[unsafe(method(applicationShouldHandleReopen:hasVisibleWindows:))]
         fn should_handle_reopen(&self, _app: &AnyObject, _flag: bool) -> bool {
             // Reopening the already-running app is the recovery action after
             // granting Input Monitoring permission. This is idempotent.
-            ensure_keyboard_monitor();
-            unsafe {
-                if let Some(ptr) = TICKEYS_PTR {
-                    settings_window::show_prefs_window(self.mtm(), ptr);
-                }
-            }
+            recheck_input_monitoring(self.mtm());
+            settings_window::show_prefs_window(self.mtm());
             true
         }
     }
+
+    impl AppDelegate {
+        #[unsafe(method(recoverInputMonitoring:))]
+        fn recover_input_monitoring(&self, _timer: &AnyObject) {
+            unsafe { INPUT_RECOVERY_TIMER = std::ptr::null_mut() };
+            recover_input_monitoring(self.mtm());
+        }
+    }
 );
+
+pub fn input_monitoring_active() -> bool {
+    unsafe {
+        let monitor = &raw const KEYBOARD_MONITOR;
+        CGPreflightListenEventAccess()
+            && (*monitor)
+                .as_ref()
+                .is_some_and(|monitor| monitor.is_enabled())
+    }
+}
 
 impl AppDelegate {
     fn load_schemes() -> Vec<AudioScheme> {
@@ -326,40 +317,8 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        KeyboardMonitorEnsurePlan, keyboard_monitor_ensure_plan,
-        should_present_input_monitoring_alert,
-    };
-
     const EN_LOCALIZATION: &str = include_str!("../assets/lproj/Base.lproj/Localizable.strings");
     const ZH_LOCALIZATION: &str = include_str!("../assets/lproj/zh-Hans.lproj/Localizable.strings");
-
-    #[test]
-    fn keyboard_monitor_recovery_avoids_duplicate_work() {
-        assert_eq!(
-            keyboard_monitor_ensure_plan(true, true, false),
-            KeyboardMonitorEnsurePlan::ReuseEnabled
-        );
-        assert_eq!(
-            keyboard_monitor_ensure_plan(true, false, false),
-            KeyboardMonitorEnsurePlan::ReenableExisting
-        );
-        assert_eq!(
-            keyboard_monitor_ensure_plan(false, false, false),
-            KeyboardMonitorEnsurePlan::CreateNew
-        );
-        assert_eq!(
-            keyboard_monitor_ensure_plan(false, false, true),
-            KeyboardMonitorEnsurePlan::WaitForAlert
-        );
-        assert_eq!(
-            keyboard_monitor_ensure_plan(true, false, true),
-            KeyboardMonitorEnsurePlan::ReenableExisting
-        );
-
-        assert!(should_present_input_monitoring_alert(false));
-        assert!(!should_present_input_monitoring_alert(true));
-    }
 
     #[test]
     fn input_monitoring_recovery_copy_is_complete_in_both_localizations() {
@@ -369,6 +328,15 @@ mod tests {
                 "permission_message",
                 "open_input_monitoring_settings",
                 "permission_not_now",
+                "test_sound",
+                "test_sound_hint",
+                "audio_loading",
+                "audio_starting",
+                "audio_ready",
+                "audio_retrying",
+                "audio_scheme_failed",
+                "input_ready",
+                "input_unavailable",
             ] {
                 assert!(
                     localization.contains(&format!("\"{key}\" =")),

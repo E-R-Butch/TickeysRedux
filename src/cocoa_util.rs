@@ -13,6 +13,16 @@ pub fn l10n_str(key: &str) -> Retained<NSString> {
     bundle.localizedStringForKey_value_table(&key_ns, None, None)
 }
 
+/// Keep translations for built-in names and use the manifest's display name
+/// when no localized entry exists (e.g. a source-customized scheme).
+pub fn scheme_display_name(scheme: &crate::tickeys::AudioScheme) -> Retained<NSString> {
+    NSBundle::mainBundle().localizedStringForKey_value_table(
+        &NSString::from_str(&scheme.name),
+        Some(&NSString::from_str(&scheme.display_name)),
+        None,
+    )
+}
+
 /// Convert NSString to Rust String.
 pub fn nsstring_to_string(ns: &NSString) -> String {
     ns.to_string()

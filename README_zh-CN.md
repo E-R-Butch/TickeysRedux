@@ -1,12 +1,14 @@
 # Tickeys Redux
 
-专为 Apple Silicon Mac 打造的原生菜单栏应用，让现代 macOS 重新拥有机械键盘敲击声。
+专为 Apple Silicon Mac 打造的原生菜单栏应用，为打字提供本地音效。
 
 [English](README.md) | 中文
 
 ![Tickeys Redux 预览](docs/hero.svg)
 
 **免费、开源、本地运行。不用麦克风。没有遥测。没有云服务。**
+
+**源码版本：1.0.8。** 本目录已完成实现，正式签名和发布尚未执行。见 [v1.0.8 说明与待验收项](docs/release-v1.0.8.md)。
 
 [从 Releases 下载](https://github.com/E-R-Butch/TickeysRedux/releases) · [从源码构建](#打包-app-bundle)
 
@@ -16,7 +18,7 @@ Tickeys Redux 是 [Tickeys](https://github.com/yingDev/Tickeys)（应元东）�
 
 ## 为什么值得试试
 
-- **即时键音反馈**：内置泡泡、Cherry G80-3000、Cherry G80-3494、架子鼓、机械键盘、星球大战、刀剑和打字机 8 套方案。
+- **即时键音反馈**：内置泡泡、架子鼓、机械键盘、合成脆响、合成闷响、合成太空、合成刀剑和合成打字机 8 套方案。其中 32 个来源未确认的录音已替换为原创合成音效；另 21 个录音保留原许可。
 - **原生控制界面**：从菜单栏快速切换方案、调音量和音调，也可以使用三个标签页的偏好设置窗口。
 - **隐私边界清楚**：使用 macOS「输入监控」知道“有按键发生”，不是麦克风监听。
 - **没有后台网络服务**：没有遥测、云同步、分析上报或更新 beacon。
@@ -28,8 +30,8 @@ Tickeys Redux 是 [Tickeys](https://github.com/yingDev/Tickeys)（应元东）�
 应用安静待在菜单栏。选择音效方案，设置音量和音调，然后开始打字。每次 key-down 都会立刻播放本地 WAV 采样。偏好设置包含“音效”“通用”“关于”三个标签页。
 
 ```text
-菜单栏 -> 音效方案 -> Bubble / Cherry G80-3000 / Cherry G80-3494 / Drum
-                     Mechanical / Star Wars / Sword / Typewriter
+菜单栏 -> 音效方案 -> 泡泡 / 架子鼓 / 机械键盘 / 合成脆响
+                     合成闷响 / 合成太空 / 合成刀剑 / 合成打字机
 菜单栏 -> 音量     -> 25% / 50% / 75% / 100%
 菜单栏 -> 音调     -> 0.5x / 0.75x / 1.0x / 1.5x / 2.0x
 ```
@@ -40,31 +42,27 @@ Tickeys Redux 是 [Tickeys](https://github.com/yingDev/Tickeys)（应元东）�
 
 正式发布版使用一张长期不变的免费自签名证书，不购买 Apple Developer ID，也不做公证。如果 macOS 首次启动时拦截，请先尝试打开一次，再前往「系统设置 → 隐私与安全性」，滚动到“安全性”，点击「仍要打开」，最后确认「打开」。由管理员管控的 Mac 可能不允许这样放行。
 
-首次启动时，macOS 会请求「输入监控」权限。Tickeys Redux 只使用按键码选择本地音效，不把输入内容写入日志或持久化、不还原文本内容、也不传输输入事件，更不会使用麦克风。授权后请再次打开应用；若仍无声，请完全退出 Tickeys Redux 后重新启动。
+首次启动时，macOS 会请求「输入监控」权限。Tickeys Redux 只使用按键码选择本地音效，不把输入内容写入日志或持久化、不还原文本内容、也不传输输入事件，更不会使用麦克风。v1.0.8 在返回应用或打开偏好设置时会重新检查权限。偏好设置显示监听状态，并提供系统设置入口；若升级后旧权限仍失效，可从该入口修复应用条目。
 
-## v1.0.7 更新
+## v1.0.8 源码更新
 
-- 开机自启现在完整处理 `SMAppService` 状态、显示真实注册错误，并在 macOS 要求批准时打开“登录项”设置。
-- 修复从菜单栏设置音量后，重启时音量再次除以 100、几乎听不见的问题。
-- 如果登录启动时 CoreAudio 尚未就绪，音频线程会重试；播放调用明确返回设备错误时，会重建音频输出。
-- 键盘监听被系统禁用或电脑睡眠后，会尝试重新启用 Event Tap，不再重启整个进程。
-- 升级后若「输入监控」仍绑定旧版本，应用会显示可见的恢复提示并直达正确的系统设置页面。
-- 即使隐藏了菜单栏图标，再次双击应用也会打开偏好设置。
-- 修复菜单重复操作导致的对象泄漏，并强化发布包校验。
+- 启动、重新激活、打开偏好设置、唤醒和 Event Tap 失效时统一重检「输入监控」；重新启用失败后，在回调返回后由主线程延迟重建。系统授权请求每次启动最多一次，不用应用模态提示阻塞偏好设置。
+- 菜单栏与偏好设置共用状态，正确显示小数音量，音调范围统一为 `0.25×–2.0×`；提供音频/监听状态及无需键盘权限的「测试声音」。
+- 最新设置与有界击键队列分离，后台解码，共享 PCM 采样，并丢弃过期击键。
+- 百分比设置带版本标记；旧版无法区分的低值原样保留，避免意外放大。若旧分数设置导致音量过轻，请重新选择所需音量。
+- 「关于」完整支持中英文，提供五个可点击入口；许可证和第三方声明优先打开 App 内的离线文件。
+- **五套音效的 32 个 WAV 改为原创程序合成**，旧方案 ID 与按键映射兼容；泡泡、机械键盘和鼓声的 21 个有许可录音保留。v1.0.8 不再包含原星球大战或真实 Cherry 录音，详见 [音效来源](docs/audio-assets.md)。
+- 打包附带依赖、音效和 Rust 运行时许可，核对源码与资源，每次输出独立的新构建目录；正式发布强制检查版本标签、干净工作树及原签名证书。
 
-### v1.0.7 已知限制
+### 已知限制与验收状态
 
-- 从系统设置返回应用时，不一定会自动重新检查「输入监控」权限；Event Tap 重新启用失败后也不会完整重建监听。仍然无声时，需要再次打开应用或彻底退出后重启。
-- 菜单栏和已经创建的偏好设置窗口还不能在所有方向上即时同步。
-- 旧版音量迁移可能把精确的 `0.25%`、`0.5%`、`0.75%` 或 `1%` 误认为旧分数值；音调滑杆还显示了低于引擎实际下限 `0.25x` 的范围。
-- 当前只验证了启动失败和同步播放错误后的音频恢复；部分异步 CoreAudio 设备或路由变化仍可能需要重启应用。
-- 尚不支持运行时导入音效包；自定义方案目前需要从源码重新构建。
+输入生命周期和发布策略已有自动化回归覆盖；真实 macOS 权限授予/撤销、全局键盘捕获、睡眠唤醒，以及菜单栏与窗口交互仍需实机验收。异步 CoreAudio 设备或路由切换可能仍需重启；v1.0.8 没有新增已验证的设备热插拔恢复功能。运行时导入音效仍在计划中。托管 CI、正式签名和发布状态单独记录在 [验证记录](docs/development-audio-settings.md)。
 
 ## 与原版 Tickeys 的真实位置
 
-对照基线是原作者最终发布的 macOS [Tickeys 1.1.0](https://www.yingdev.com/projects/tickeys)，而不只是 GitHub 上较旧的源码快照。Redux 已经更新了运行时和权限模型，但 v1.0.7 还没有恢复原版全部用户功能。
+对照基线是原作者最终发布的 macOS [Tickeys 1.1.0](https://www.yingdev.com/projects/tickeys)，而不只是 GitHub 上较旧的源码快照。Redux 已经更新了运行时和权限模型，但 v1.0.8 还没有恢复原版全部用户功能。
 
-| 能力 | 原版 macOS 1.1.0 | Redux 1.0.7 |
+| 能力 | 原版 macOS 1.1.0 | Redux 1.0.8 源码 |
 |---|---|---|
 | **平台与运行时** | Intel 时代版本 | **Apple Silicon 原生** |
 | **权限** | 辅助功能 | **仅输入监控** |
@@ -89,36 +87,45 @@ Tickeys Redux 是 [Tickeys](https://github.com/yingDev/Tickeys)（应元东）�
 3. 点击菜单栏 🎹 图标，或打开「偏好设置」：
    - 在全部 8 套音效方案之间切换
    - 调整音量（25%/50%/75%/100%）
-   - 调整音调（0.5×–2.0×）
+   - 调整音调（菜单预设 0.5×–2.0×；偏好设置 0.25×–2.0×）
 4. 开始打字 — 即时键音
 
 ## 打包 App Bundle
 
-需要 Rust 1.85+。
-
-使用一键脚本：
+需要 Apple Silicon Mac、macOS 13+、Command Line Tools、Rust 1.85+ 和 Python 3。
 
 ```sh
 git clone https://github.com/E-R-Butch/TickeysRedux.git
 cd TickeysRedux
 ./scripts/package_app.sh
+# 可选：本地 debug 构建
+./scripts/package_app.sh --debug
+# 可选：本地 DMG，需要 create-dmg
+./scripts/package_app.sh --dmg dist/Tickeys.Redux.v1.0.8.local.dmg
 ```
 
-脚本会自动完成：release 构建 → 创建 `.app` 结构 → 复制二进制和资源 → 写入 `Info.plist` → 默认对完整 App Bundle 进行 ad-hoc 签名和校验。
+每次成功构建都会输出并打印新的 `dist/builds/v<版本>-<提交>-<profile>-<mode>-<随机值>/Tickeys Redux.app` 路径，保留以前的构建。`--dmg` 可以不带路径，默认使用 `dist/` 中带版本号的本地 DMG 名称；已有 DMG 不会被覆盖。
 
-打包脚本是 App Bundle 目录、资源、部署目标和签名步骤的唯一准确说明。在 Apple Silicon 上，单独运行 `cargo build --release --locked` 会生成由链接器 ad-hoc 签名的 `target/release/tickeys-redux`，但不会生成可安装的 App，也不会使用项目的长期发布身份。
+脚本构建面向 macOS 13 的 arm64 程序，组装资源与语言元数据，复制项目、依赖、音效及实际 Rust 工具链的运行时许可，记录源码提交，默认进行 ad-hoc 签名并验证完整 App。单独执行 `cargo build` 只产生二进制，不生成可安装的 App Bundle。
+
+正式产物使用 `scripts/package_release.sh`：要求干净工作树、指向 HEAD 的附注标签 `v1.0.8`，以及维护者原签名 Mac 上的既有证书/私钥。脚本硬固定证书 SHA-1 和 SHA-256，校验 ZIP、DMG 内的 App，生成校验和及构建信息，并拒绝覆盖已有正式产物。见 [签名政策](docs/signing.md)；无需建立新身份或购买 Developer ID。
 
 ### 校验
 
 ```sh
-./scripts/package_app.sh
-codesign --verify --deep --strict --verbose=2 "Tickeys Redux.app"
-plutil -lint "Tickeys Redux.app/Contents/Info.plist"
+cargo fmt --all -- --check
+cargo test --all-targets --locked
+cargo clippy --all-targets --locked -- -D warnings
+python3 scripts/generate_audio_assets.py --check
+python3 scripts/generate_notices.py --check
+python3 -m unittest discover -s scripts/tests -v
 ```
 
-## v1.0.7 的开发者自定义音效方案
+已完成检查与实机验收边界见 [验证记录](docs/development-audio-settings.md)。
 
-v1.0.7 还没有面向普通用户的安全导入流程。不要直接修改已经安装的正式版 App Bundle：这会破坏代码签名，并可能影响「输入监控」中的应用身份。若要把自定义方案编入源码构建，请在 `assets/data/` 下添加 `.wav` 文件，并编辑 `assets/data/schemes.json`：
+## 开发者自定义音效方案
+
+目前没有运行时导入功能。不要修改已安装的签名 App Bundle，否则会改变签名并可能影响输入监控身份。源码定制需要在 `assets/data/` 添加 WAV、在 `assets/data/schemes.json` 定义方案，并在 `scripts/generate_audio_assets.py` 登记作者和许可策略，以便重新生成和校验完整音频清单。
 
 ```json
 {
@@ -130,7 +137,7 @@ v1.0.7 还没有面向普通用户的安全导入流程。不要直接修改已�
 }
 ```
 
-`name` 必须与音效目录名一致；没有对应本地化项时，当前 UI 会显示这个字段。`display_name` 是 v1.0.7 数据格式的必填项，但当前 UI 尚未使用。后续将从 Application Support 安全导入，见 [ROADMAP.md](ROADMAP.md)。
+`name` 必须与音效目录一致；没有本地化项时使用 `display_name`。打包前同步 [音效来源](docs/audio-assets.md)、包内许可及生成的清单。从 Application Support 安全导入仍属于 [Roadmap](ROADMAP.md) 的后续功能。
 
 ## 技术栈
 
@@ -139,17 +146,17 @@ v1.0.7 还没有面向普通用户的安全导入流程。不要直接修改已�
 | 音频 | rodio 0.20 | WAV 解码 + CoreAudio 播放 |
 | UI | objc2 0.6 | NSStatusBar, NSMenu, NSAlert |
 | 键盘 | CGEventTap (FFI) | 全局按键监听 |
-| 并发 | crossbeam 0.8 | 音频工作线程通道 |
+| 并发 | crossbeam-channel 0.5 | 有界击键队列与设置唤醒通道 |
 | 配置 | serde + serde_json | 方案定义解析 |
 | 偏好 | NSUserDefaults | 持久化方案/音量/音调 |
 
 ## 权限说明
 
-Tickeys Redux 使用 `CGEventTapCreate` 接收全局按键码，并据此选择本地音效，需要 macOS「输入监控」权限。应用不会把事件写入磁盘或传输到外部。首次启动时系统会显示授权提示；在系统设置中启用后，请再次打开应用。若仍无声，请完全退出 Tickeys Redux 后重新启动。
+Tickeys Redux 使用 `CGEventTapCreate` 接收全局按键码，并据此选择本地音效，需要 macOS「输入监控」权限。应用不会把事件写入磁盘或传输到外部。缺少权限时，每次进程启动最多请求一次系统授权。偏好设置保持可操作，显示状态并提供「测试声音」和系统设置入口；重新激活、再次打开偏好设置及唤醒会触发重检，不需要辅助功能权限。
 
 在 Apple Silicon 上，`cargo build` 生成由链接器 ad-hoc 签名的 Mach-O，而不是项目的长期发布身份。`scripts/package_app.sh` 默认对完整本地 App Bundle 进行 ad-hoc 签名，因此重新打包后 macOS 可能要求再次授予「输入监控」权限。从 v1.0.7 起，正式发布版使用 [docs/signing.md](docs/signing.md) 记录的长期自签名身份。从旧的 ad-hoc 版本升级时需要修复一次权限；后续使用同一身份签名的版本可以继续沿用。
 
-开机自启使用 Apple 的 `SMAppService`，因此需要 macOS 13 或更高版本。v1.0.7 会显示 macOS 返回的真实注册错误，不再静默假装设置成功。
+开机自启使用 Apple 的 `SMAppService`，因此需要 macOS 13 或更高版本。应用会显示 macOS 返回的真实注册错误，不再静默假装设置成功。
 
 ## 项目元数据
 
@@ -157,4 +164,4 @@ Tickeys Redux 使用 `CGEventTapCreate` 接收全局按键码，并据此选择�
 
 ## 许可证与音效资源
 
-Redux 源代码采用 MIT 许可证。原版作者 [应元东](https://github.com/yingDev)，Redux 移植 [Sinclair](https://github.com/E-R-Butch)。内置音效包可能采用不同条款，来源状态记录在 [docs/audio-assets.md](docs/audio-assets.md)。
+Redux 源代码采用 MIT 许可证。原版作者 [应元东](https://github.com/yingDev)，Redux 移植 [Sinclair](https://github.com/E-R-Butch)。21 个保留录音采用 CC BY 3.0 或 CC0，32 个新合成 WAV 采用项目 MIT。完整的 [音效来源](docs/audio-assets.md)、[依赖声明](THIRD_PARTY_NOTICES.md) 和许可文本随 App 提供离线访问。依赖清单覆盖目标平台的 46 个普通/构建依赖、103 个声明和许可文件；Rust 运行时许可来自实际构建工具链。

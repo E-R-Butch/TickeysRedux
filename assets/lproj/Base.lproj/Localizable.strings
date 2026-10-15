@@ -7,6 +7,15 @@
 "sound_scheme" = "Sound Scheme";
 "volume" = "Volume";
 "pitch" = "Pitch";
+"test_sound" = "Test Sound";
+"test_sound_hint" = "Play at the selected volume and pitch. Input Monitoring is not required.";
+"audio_loading" = "Audio: loading sound scheme…";
+"audio_starting" = "Audio: starting output…";
+"audio_ready" = "Audio: ready";
+"audio_retrying" = "Audio: output unavailable; retrying…";
+"audio_scheme_failed" = "Audio: could not load scheme";
+"input_ready" = "Keyboard monitoring: active";
+"input_unavailable" = "Keyboard monitoring: unavailable";
 "preferences" = "Preferences…";
 "quit_tickeys" = "Quit Tickeys Redux";
 
@@ -40,13 +49,13 @@
 
 /* Scheme names */
 "bubble" = "Bubble";
-"typewriter" = "Typewriter";
+"typewriter" = "Synth Typewriter";
 "mechanical" = "Mechanical";
-"sword" = "Sword";
+"sword" = "Synth Blades";
 "drum" = "Drum";
-"Cherry_G80_3000" = "Cherry G80-3000";
-"Cherry_G80_3494" = "Cherry G80-3494";
-"starwars" = "Star Wars";
+"Cherry_G80_3000" = "Synth Click";
+"Cherry_G80_3494" = "Synth Thock";
+"starwars" = "Synth Space";
 
 /* Console */
 "launching" = "Tickeys Redux launching…";
@@ -57,3 +66,22 @@
 "permission_message" = "Tickeys Redux cannot detect keypresses or play key sounds until Input Monitoring is enabled.\n\nOpen System Settings → Privacy & Security → Input Monitoring, then add or enable Tickeys Redux. Return and open Tickeys Redux again; key sounds will resume as soon as permission is available. If it is still silent, quit Tickeys Redux completely and reopen it.\n\nAfter upgrading Tickeys Redux, macOS may keep an entry for the previous build. If permission still does not work, remove the old Tickeys Redux entry, add the current app again, and enable it.";
 "open_input_monitoring_settings" = "Open Input Monitoring Settings";
 "permission_not_now" = "Not Now";
+
+/* About and permissions controls */
+"input_settings" = "Input Monitoring…";
+"input_permission_hint" = "Enable Tickeys Redux in System Settings → Privacy & Security → Input Monitoring.";
+"about_description" = "Mechanical keyboard sounds for every keystroke.";
+"about_original_author" = "Original author";
+"about_original_link" = "yingDev (Ying Yuandong)";
+"about_redux_author" = "Redux maintainer";
+"about_redux_link" = "Sinclair Liu · Tickeys Redux";
+"about_updates" = "Updates";
+"about_releases_link" = "View Releases";
+"about_license" = "Project license";
+"about_license_link" = "MIT License";
+"about_third_party" = "Third-party credits";
+"about_third_party_link" = "Licenses and Notices";
+"about_local_document_hint" = "Open the document included with this app. If it is missing, open the project repository.";
+"about_built_with" = "Built with Rust · objc2 · rodio\nBased on yingDev’s Tickeys for macOS.";
+"about_link_error_title" = "Could Not Open Link";
+"about_link_error_message" = "macOS could not open this document or website. Check your default browser and document viewer, then try again.";

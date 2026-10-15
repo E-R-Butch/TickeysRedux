@@ -5,6 +5,9 @@ use objc2::msg_send;
 use objc2::rc::Retained;
 use objc2_foundation::{NSString, NSUserDefaults};
 
+const AUDIO_PREF_SCHEMA_VERSION: isize = 1;
+
+#[derive(Clone, Debug)]
 pub struct Pref {
     pub scheme: String,
     pub volume: f32,
@@ -51,9 +54,14 @@ impl Pref {
             } else {
                 pref.volume
             };
-            let (volume, volume_changed) = normalize_volume_percent(stored_volume);
-            if volume_changed {
-                let _: () = msg_send![&ud, setDouble: volume as f64, forKey: &*volume_key];
+            let schema_version: isize =
+                msg_send![&ud, integerForKey: &*NSString::from_str("audio_pref_schema_version")];
+            // Unversioned 0.5 is ambiguous: a pre-1.0.7 fraction OR a valid
+            // 0.5% slider value. Never guess by multiplying the user's volume.
+            // Preserve percentage points and stamp the schema on this load.
+            let volume = normalize_volume_percent(stored_volume);
+            if schema_version < AUDIO_PREF_SCHEMA_VERSION {
+                eprintln!("audio preferences: preserving unversioned volume as percentage points");
             }
 
             let pitch_obj: *mut objc2::runtime::AnyObject =
@@ -71,15 +79,15 @@ impl Pref {
                 scheme_str = pref.scheme.clone();
             }
 
-            if volume_changed {
-                let _: bool = msg_send![&ud, synchronize];
-            }
-
-            Pref {
+            let pref = Pref {
                 scheme: scheme_str,
                 volume,
-                pitch,
-            }
+                pitch: crate::tickeys::normalize_pitch(pitch),
+            };
+            // Write the marker even if no normalization was necessary. Future
+            // migrations can distinguish these canonical percentage settings.
+            pref.save();
+            pref
         }
     }
 
@@ -101,27 +109,19 @@ impl Pref {
             // Use setDouble:forKey: — NSUserDefaults stores numbers as double internally
             let _: () = msg_send![&ud, setDouble: self.volume as f64, forKey: &*volume_key];
             let _: () = msg_send![&ud, setDouble: self.pitch as f64, forKey: &*pitch_key];
+            let _: () = msg_send![&ud, setInteger: AUDIO_PREF_SCHEMA_VERSION, forKey: &*NSString::from_str("audio_pref_schema_version")];
 
             let _: () = msg_send![&ud, setObject: &*pref_exists_key, forKey: &*pref_exists_key];
-            let _: bool = msg_send![&ud, synchronize];
         }
     }
 }
 
-/// Preferences use percentage points (0..=100). Versions up to 1.0.6 could
-/// save menu selections as 0..=1, so migrate those values on load.
-pub(crate) fn normalize_volume_percent(raw: f32) -> (f32, bool) {
+/// Runtime values always use percentage points. Migration is startup-only.
+pub(crate) fn normalize_volume_percent(raw: f32) -> f32 {
     if !raw.is_finite() {
-        return (50.0, true);
+        return 50.0;
     }
-
-    let migrated = [0.25_f32, 0.5, 0.75, 1.0]
-        .iter()
-        .any(|legacy| (raw - legacy).abs() < 0.0001);
-    let converted = if migrated { raw * 100.0 } else { raw };
-    let normalized = converted.clamp(0.0, 100.0);
-    let changed = migrated || (normalized - raw).abs() > f32::EPSILON;
-    (normalized, changed)
+    raw.clamp(0.0, 100.0)
 }
 
 #[cfg(test)]
@@ -129,19 +129,20 @@ mod tests {
     use super::normalize_volume_percent;
 
     #[test]
-    fn migrates_legacy_fractional_volume_values() {
-        assert_eq!(normalize_volume_percent(0.25), (25.0, true));
-        assert_eq!(normalize_volume_percent(0.5), (50.0, true));
-        assert_eq!(normalize_volume_percent(0.75), (75.0, true));
-        assert_eq!(normalize_volume_percent(1.0), (100.0, true));
+    fn low_percentage_values_are_preserved_even_without_a_version_marker() {
+        for raw in [0.25, 0.5, 0.75, 1.0] {
+            assert_eq!(normalize_volume_percent(raw), raw);
+            assert_eq!(normalize_volume_percent(normalize_volume_percent(raw)), raw);
+        }
     }
 
     #[test]
     fn preserves_percentage_values_and_clamps_bad_input() {
-        assert_eq!(normalize_volume_percent(50.0), (50.0, false));
-        assert_eq!(normalize_volume_percent(0.0), (0.0, false));
-        assert_eq!(normalize_volume_percent(0.8), (0.8, false));
-        assert_eq!(normalize_volume_percent(150.0), (100.0, true));
-        assert_eq!(normalize_volume_percent(f32::NAN), (50.0, true));
+        assert_eq!(normalize_volume_percent(50.0), 50.0);
+        assert_eq!(normalize_volume_percent(0.0), 0.0);
+        assert_eq!(normalize_volume_percent(0.8), 0.8);
+        assert_eq!(normalize_volume_percent(150.0), 100.0);
+        assert_eq!(normalize_volume_percent(-10.0), 0.0);
+        assert_eq!(normalize_volume_percent(f32::NAN), 50.0);
     }
 }
