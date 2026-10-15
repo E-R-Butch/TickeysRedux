@@ -76,7 +76,7 @@ Tickeys Redux 的目标不只是让旧代码重新运行，而是在保持本地
 
 - ✓ 用 `crossbeam-channel` 替换完整 `crossbeam` 依赖
 - ✓ 移除未使用的 `ureq`、`libc` 及不需要的音频 codec 和系统框架 feature
-- △ CI 已配置格式、Rust/Python 测试、Clippy、arm64 构建、全部 WAV 解码及音频/许可清单校验；待首次 GitHub Actions 运行
+- ✓ GitHub Actions 已通过 stable / Rust 1.85 双环境：Rust/Python 测试、arm64 构建、WAV 与许可清单校验；stable 另检格式、Clippy 和完整 App Bundle，见[验证运行](https://github.com/E-R-Butch/TickeysRedux/actions/runs/38692966914)
 - ✓ 正式发布硬固定原证书 SHA-1 和 SHA-256，并检查 ZIP/DMG 内的签名身份
 - ✓ 正式发布要求干净工作树、指向 HEAD 的附注版本标签，记录源码提交并拒绝覆盖已有产物
 - ✓ App Bundle 包含项目 LICENSE、第三方声明、46 个目标平台依赖的 103 份许可/声明文件及实际工具链的 Rust 运行时许可
