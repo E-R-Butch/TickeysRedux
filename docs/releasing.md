@@ -38,6 +38,8 @@ cd dist
 shasum -a 256 -c Tickeys.Redux.v1.0.8.sha256.txt
 ```
 
+Publication stages each complete file on the destination filesystem and claims its name atomically. A file, directory, or symlink created during packaging is never overwritten. The checksum file is written last. If publication fails partway through, already-published files are retained and the command reports failure; inspect them rather than deleting outputs or retrying blindly. The destination filesystem must support hard links, otherwise publication fails without an overwrite fallback.
+
 ## Publish only the verified artifacts
 
 After final acceptance, push the annotated tag and publish the four verified artifacts with [the v1.0.8 release notes](release-v1.0.8.md). No script in this repository publishes automatically or sends private signing material anywhere. Keep existing releases and tags intact.

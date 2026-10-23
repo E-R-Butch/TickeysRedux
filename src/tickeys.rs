@@ -4,7 +4,7 @@
 
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Seek};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -72,6 +72,34 @@ impl AudioData {
         let path = path.as_ref();
         let file =
             BufReader::new(File::open(path).map_err(|e| format!("{}: {e}", path.display()))?);
+        // rodio's WAV adapter substitutes sample-read failures with silence and
+        // calculates duration before our PCM checks. Validate the header and
+        // every sample first, so corrupt resources cannot panic the worker or
+        // report Ready with silent padding. Keep rodio's existing conversion
+        // for valid files, including the bundled PCM16 recordings.
+        let mut wav = hound::WavReader::new(file)
+            .map_err(|e| format!("decode {}: {e}", path.display()))?;
+        let spec = wav.spec();
+        if spec.channels == 0 || spec.sample_rate == 0 || wav.len() == 0 {
+            return Err(format!("invalid WAV metadata: {}", path.display()));
+        }
+        match spec.sample_format {
+            hound::SampleFormat::Int => {
+                for sample in wav.samples::<i32>() {
+                    sample.map_err(|e| format!("decode {}: {e}", path.display()))?;
+                }
+            }
+            hound::SampleFormat::Float => {
+                for sample in wav.samples::<f32>() {
+                    let sample = sample.map_err(|e| format!("decode {}: {e}", path.display()))?;
+                    if !sample.is_finite() {
+                        return Err(format!("invalid PCM data: {}", path.display()));
+                    }
+                }
+            }
+        }
+        let mut file = wav.into_inner();
+        file.rewind().map_err(|e| format!("{}: {e}", path.display()))?;
         let decoder = Decoder::new(file).map_err(|e| format!("decode {}: {e}", path.display()))?;
         let channels = decoder.channels();
         let sample_rate = decoder.sample_rate();
@@ -609,8 +637,12 @@ mod tests {
                 let _ = std::fs::remove_file(&self.0);
             }
         }
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .unwrap();
         let _cleanup = Cleanup(path.clone());
-        let mut file = File::create(&path).unwrap();
         file.write_all(b"RIFF").unwrap();
         file.write_all(&(36 + declared).to_le_bytes()).unwrap();
         file.write_all(b"WAVEfmt ").unwrap();
@@ -664,6 +696,37 @@ mod tests {
     }
 
     #[test]
+    fn corrupt_scheme_reports_failure_and_a_later_selection_recovers() {
+        with_wav_fixture(1, 0, 16, 2, &[0, 64], |path| {
+            let (mut tickeys, channels, mut player, plays) = player();
+            tickeys.schemes.push(AudioScheme {
+                name: "corrupt".into(),
+                display_name: "Corrupt fixture".into(),
+                files: vec![path.file_name().unwrap().to_str().unwrap().into()],
+                non_unique_count: 1,
+                key_audio_map: BTreeMap::new(),
+            });
+            tickeys
+                .load_scheme(path.parent().unwrap().to_str().unwrap(), "corrupt")
+                .unwrap();
+            player.apply_settings(&channels);
+            assert!(matches!(
+                tickeys.audio_status().scheme,
+                SchemeStatus::Failed(_)
+            ));
+            tickeys.test_sound();
+            assert!(!player.play(channels.play_rx.recv().unwrap()).unwrap());
+            assert!(plays.is_empty());
+            tickeys.load_scheme(&root("bubble"), "bubble").unwrap();
+            player.apply_settings(&channels);
+            assert_eq!(tickeys.audio_status().scheme, SchemeStatus::Ready);
+            tickeys.test_sound();
+            assert!(player.play(channels.play_rx.recv().unwrap()).unwrap());
+            assert!(plays.try_recv().is_ok());
+        });
+    }
+
+    #[test]
     fn every_bundled_wav_decodes_and_manifest_is_valid() {
         let mut names = HashSet::new();
         for scheme in schemes() {
@@ -680,7 +743,12 @@ mod tests {
             for entry in std::fs::read_dir(directory).unwrap() {
                 let path = entry.unwrap().path();
                 if path.extension().is_some_and(|ext| ext == "wav") {
-                    AudioData::from_file(path).unwrap();
+                    let audio = AudioData::from_file(&path).unwrap();
+                    let legacy: Vec<f32> = Decoder::new(BufReader::new(File::open(path).unwrap()))
+                        .unwrap()
+                        .convert_samples()
+                        .collect();
+                    assert_eq!(audio.samples.as_ref(), legacy.as_slice());
                 }
             }
         }

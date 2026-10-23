@@ -5,10 +5,11 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-import shutil
+import os
 import subprocess
 import tempfile
 
+from artifact_publication import publish_artifact
 from build_app import ROOT, build_app, create_dmg, run
 from release_policy import RELEASE_CERT_SHA1, RELEASE_CERT_SHA256, command, release_source, verify_bundle
 
@@ -29,7 +30,7 @@ def main():
         # cannot be overwritten by accidentally rerunning the packaging command.
         dist = ROOT / "dist"
         names = [f'Tickeys.Redux.v{stamp["version"]}.{ext}' for ext in ("zip", "dmg", "sha256.txt", "build.json")]
-        if any((dist / name).exists() for name in names):
+        if any(os.path.lexists(dist / name) for name in names):
             raise ValueError("release artifacts already exist; refusing to replace them")
         run("cargo", "fmt", "--all", "--", "--check")
         run("cargo", "test", "--all-targets", "--locked")
@@ -55,8 +56,11 @@ def main():
             if release_source(ROOT) != stamp:
                 raise ValueError("source/tag changed during packaging; artifacts were not published")
             dist.mkdir(exist_ok=True)
-            for path in (zip_path, dmg_path, checksum_path, metadata_path):
-                shutil.move(str(path), dist / path.name)
+            # The checksum file is the completion marker and appears last.
+            # On a collision, keep all existing outputs; never delete or replace
+            # an artifact to make a retry appear successful.
+            for path in (zip_path, dmg_path, metadata_path, checksum_path):
+                publish_artifact(path, dist / path.name)
         print(f"Verified release {stamp['tag']} at {stamp['commit']}: {dist}")
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"Release blocked: {error}\n")
