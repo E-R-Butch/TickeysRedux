@@ -80,8 +80,14 @@ def build_app(official=False, debug=False):
         for name in ("LICENSE", "THIRD_PARTY_NOTICES.md"):
             shutil.copy2(ROOT / name, resources / name)
         shutil.copytree(ROOT / "licenses", resources / "licenses")
+        # Include the generator source for offline provenance inspection.
+        (resources / "scripts").mkdir()
+        shutil.copy2(ROOT / "scripts/generate_audio_assets.py", resources / "scripts/generate_audio_assets.py")
         # Documentation links are relative to Resources in the offline bundle.
-        audio_notes = (ROOT / "docs/audio-assets.md").read_text().replace("../assets/data/", "data/")
+        audio_notes = (ROOT / "docs/audio-assets.md").read_text()
+        for source, target in [("../assets/data/", "data/"), ("../LICENSE", "LICENSE"),
+                               ("../scripts/generate_audio_assets.py", "scripts/generate_audio_assets.py")]:
+            audio_notes = audio_notes.replace(f"]({source}", f"]({target}")
         (resources / "AUDIO_ASSETS.md").write_text(audio_notes)
         runtime_docs = Path(command("rustc", "--print", "sysroot")) / "share/doc/rust"
         runtime_target = resources / "licenses/rust-runtime"
