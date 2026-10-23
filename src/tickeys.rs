@@ -77,8 +77,8 @@ impl AudioData {
         // every sample first, so corrupt resources cannot panic the worker or
         // report Ready with silent padding. Keep rodio's existing conversion
         // for valid files, including the bundled PCM16 recordings.
-        let mut wav = hound::WavReader::new(file)
-            .map_err(|e| format!("decode {}: {e}", path.display()))?;
+        let mut wav =
+            hound::WavReader::new(file).map_err(|e| format!("decode {}: {e}", path.display()))?;
         let spec = wav.spec();
         if spec.channels == 0 || spec.sample_rate == 0 || wav.len() == 0 {
             return Err(format!("invalid WAV metadata: {}", path.display()));
@@ -99,7 +99,8 @@ impl AudioData {
             }
         }
         let mut file = wav.into_inner();
-        file.rewind().map_err(|e| format!("{}: {e}", path.display()))?;
+        file.rewind()
+            .map_err(|e| format!("{}: {e}", path.display()))?;
         let decoder = Decoder::new(file).map_err(|e| format!("decode {}: {e}", path.display()))?;
         let channels = decoder.channels();
         let sample_rate = decoder.sample_rate();
