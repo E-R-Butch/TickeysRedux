@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import tempfile
 
+from artifact_publication import publish_artifact
 from release_policy import BUNDLE_ID, RELEASE_CERT_SHA1, command, release_source, source_stamp, verify_bundle
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -133,8 +134,8 @@ def build_app(official=False, debug=False):
 
 
 def create_dmg(bundle, destination, stamp, official=False):
-    destination = Path(destination).resolve()
-    if destination.exists():
+    destination = Path(destination).absolute()
+    if os.path.lexists(destination):
         raise ValueError(f"refusing to overwrite existing disk image: {destination}")
     tool = shutil.which("create-dmg")
     if not tool:
@@ -160,7 +161,7 @@ def create_dmg(bundle, destination, stamp, official=False):
             verify_bundle(mount / bundle.name, stamp["version"], stamp["commit"], official=official)
         finally:
             run("hdiutil", "detach", mount)
-        shutil.move(str(image), destination)
+        publish_artifact(image, destination)
     print(f"Verified disk image: {destination}", flush=True)
 
 

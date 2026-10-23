@@ -776,6 +776,7 @@ name = "tickeys-redux"
 version = "1.0.8"
 dependencies = [
  "crossbeam-channel",
+ "hound",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
