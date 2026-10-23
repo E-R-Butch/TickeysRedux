@@ -618,7 +618,8 @@ mod tests {
         file.write_all(&format.to_le_bytes()).unwrap();
         file.write_all(&1_u16.to_le_bytes()).unwrap();
         file.write_all(&rate.to_le_bytes()).unwrap();
-        file.write_all(&(rate * u32::from(bits / 8)).to_le_bytes()).unwrap();
+        file.write_all(&(rate * u32::from(bits / 8)).to_le_bytes())
+            .unwrap();
         file.write_all(&(bits / 8).to_le_bytes()).unwrap();
         file.write_all(&bits.to_le_bytes()).unwrap();
         file.write_all(b"data").unwrap();
