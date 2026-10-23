@@ -1,6 +1,6 @@
 //! Settings UI — menu bar with scheme/volume/pitch controls.
 //! Uses NSStatusBar item + NSMenu, with a MenuHandler target for actions.
-//! Menu is rebuilt on every action to keep checkmarks current.
+//! Both settings surfaces read the same main-thread application state.
 
 use objc2::rc::Retained;
 use objc2::{MainThreadOnly, define_class, msg_send, sel};
@@ -8,9 +8,9 @@ use objc2_app_kit::{NSMenu, NSMenuItem, NSStatusBar, NSStatusItem, NSVariableSta
 use objc2_foundation::{MainThreadMarker, NSObject, NSObjectProtocol, NSString, NSUserDefaults};
 
 use crate::cocoa_util::*;
-use crate::tickeys::{AudioScheme, Tickeys};
+use crate::tickeys::AudioScheme;
 
-static mut MENU_TICKEYS: *mut Tickeys = core::ptr::null_mut();
+static mut MENU_HANDLER: *const MenuHandler = core::ptr::null();
 // Store the NSStatusItem as a raw pointer so rebuild() can update its menu
 // without creating duplicate items.
 static mut MENU_ITEM: *mut NSStatusItem = core::ptr::null_mut();
@@ -43,66 +43,36 @@ define_class!(
     impl MenuHandler {
         #[unsafe(method(changeScheme:))]
         fn change_scheme(&self, sender: &NSMenuItem) {
-            let idx = sender.tag() as usize;
-            let schemes = load_schemes();
-            if idx >= schemes.len() { return; }
-            let name = &schemes[idx].name;
-
-            unsafe {
-                if !MENU_TICKEYS.is_null() {
-                    let dir = get_res_path(&format!("data/{}", name));
-                    (*MENU_TICKEYS).load_scheme(&dir, name);
-                }
-            }
-            save_string("audio_scheme", name);
-            rebuild(self, &schemes, self.mtm());
+            crate::app_state::set_scheme(self.mtm(), sender.tag() as usize);
         }
 
         #[unsafe(method(setVolume:))]
         fn set_volume(&self, sender: &NSMenuItem) {
             let idx = sender.tag() as usize;
             if idx >= VOL_KEYS.len() { return; }
-            let volume_percent = VOL_KEYS[idx].1;
-
-            unsafe {
-                if !MENU_TICKEYS.is_null() {
-                    (*MENU_TICKEYS).set_volume(volume_percent / 100.0);
-                }
-            }
-            save_float("audio_volume", volume_percent);
-            let schemes = load_schemes();
-            rebuild(self, &schemes, self.mtm());
+            crate::app_state::set_volume(self.mtm(), VOL_KEYS[idx].1);
         }
 
         #[unsafe(method(setPitch:))]
         fn set_pitch(&self, sender: &NSMenuItem) {
             let idx = sender.tag() as usize;
             if idx >= PITCH_KEYS.len() { return; }
-            let pitch = PITCH_KEYS[idx].1;
-
-            unsafe { if !MENU_TICKEYS.is_null() { (*MENU_TICKEYS).set_pitch(pitch); } }
-            save_float("audio_pitch", pitch);
-            let schemes = load_schemes();
-            rebuild(self, &schemes, self.mtm());
+            crate::app_state::set_pitch(self.mtm(), PITCH_KEYS[idx].1);
         }
 
         #[unsafe(method(openPreferences:))]
         fn open_preferences(&self, _sender: &NSMenuItem) {
-            let mtm = self.mtm();
-            unsafe {
-                if !MENU_TICKEYS.is_null() {
-                    crate::settings_window::show_prefs_window(mtm, MENU_TICKEYS);
-                }
-            }
+            crate::settings_window::show_prefs_window(self.mtm());
         }
     }
 );
 
 /// Rebuild the menu from scratch, setting checkmarks on the current selection.
 fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker) {
-    let pref_scheme = load_pref_scheme(schemes);
-    let pref_vol = load_pref_float("audio_volume");
-    let pref_pitch = load_pref_float("audio_pitch");
+    let pref = crate::app_state::preferences();
+    let pref_scheme = pref.scheme;
+    let pref_vol = pref.volume;
+    let pref_pitch = pref.pitch;
 
     unsafe {
         if MENU_ITEM.is_null() {
@@ -126,7 +96,7 @@ fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker
             } else {
                 "  "
             };
-            let disp = nsstring_to_string(&l10n_str(&scheme.name));
+            let disp = nsstring_to_string(&scheme_display_name(scheme));
             let title = format!("{}{}", cm, disp);
             let mi = NSMenuItem::initWithTitle_action_keyEquivalent(
                 NSMenuItem::alloc(mtm),
@@ -226,33 +196,10 @@ fn rebuild(handler: &MenuHandler, schemes: &[AudioScheme], mtm: MainThreadMarker
     }
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-fn save_string(key: &str, val: &str) {
-    let ud = NSUserDefaults::standardUserDefaults();
-    let k = NSString::from_str(key);
-    let v = NSString::from_str(val);
-    unsafe {
-        let _: () = msg_send![&ud, setObject: &*v, forKey: &*k];
-    }
-}
-
-fn save_float(key: &str, val: f32) {
-    let ud = NSUserDefaults::standardUserDefaults();
-    let k = NSString::from_str(key);
-    unsafe {
-        let _: () = msg_send![&ud, setDouble: val as f64, forKey: &*k];
-    }
-}
-
 // ── Public API ───────────────────────────────────────────────────────────────
 
-pub fn setup_menu(mtm: MainThreadMarker, tickeys_ptr: *mut Tickeys) {
-    unsafe {
-        MENU_TICKEYS = tickeys_ptr;
-    }
-
-    let schemes = load_schemes();
+pub fn setup_menu(mtm: MainThreadMarker) {
+    let schemes = crate::app_state::schemes();
     let handler: Retained<MenuHandler> = unsafe { msg_send![MenuHandler::alloc(mtm), init] };
 
     // Create the status bar item once and store it.
@@ -268,6 +215,9 @@ pub fn setup_menu(mtm: MainThreadMarker, tickeys_ptr: *mut Tickeys) {
     }
 
     rebuild(&handler, &schemes, mtm);
+    unsafe {
+        MENU_HANDLER = &*handler;
+    }
     std::mem::forget(handler);
 
     // Respect initial preference: hide if user previously turned it off
@@ -277,17 +227,24 @@ pub fn setup_menu(mtm: MainThreadMarker, tickeys_ptr: *mut Tickeys) {
     }
 }
 
+pub fn refresh(mtm: MainThreadMarker) {
+    unsafe {
+        if let Some(handler) = MENU_HANDLER.as_ref() {
+            rebuild(handler, &crate::app_state::schemes(), mtm);
+        }
+    }
+}
+
 /// Show or hide the menu bar icon.
-pub fn set_menu_bar_visible(mtm: MainThreadMarker, visible: bool) {
+pub fn set_menu_bar_visible(_mtm: MainThreadMarker, visible: bool) {
     unsafe {
         if MENU_ITEM.is_null() {
             return;
         }
         let item: &NSStatusItem = &*MENU_ITEM;
-        let button = item.button(mtm);
-        if let Some(btn) = button {
-            btn.setHidden(!visible);
-        }
+        // Hide the status item itself so macOS also releases its menu-bar slot.
+        // Hiding only its button leaves an empty space behind.
+        item.setVisible(visible);
         // Save preference
         let ud = NSUserDefaults::standardUserDefaults();
         let k = NSString::from_str("show_in_menu_bar");
@@ -306,42 +263,6 @@ fn load_pref_bool(key: &str, default: bool) -> bool {
             default
         } else {
             msg_send![val, boolValue]
-        }
-    }
-}
-
-// ── Preferences loading ──────────────────────────────────────────────────────
-
-fn load_schemes() -> Vec<AudioScheme> {
-    let path = get_res_path("data/schemes.json");
-    let mut f = std::fs::File::open(&path).unwrap();
-    let mut s = String::new();
-    std::io::Read::read_to_string(&mut f, &mut s).unwrap();
-    serde_json::from_str(&s).unwrap()
-}
-
-fn load_pref_scheme(schemes: &[AudioScheme]) -> String {
-    load_pref_string("audio_scheme").unwrap_or_else(|| schemes[0].name.clone())
-}
-
-fn load_pref_string(key: &str) -> Option<String> {
-    unsafe {
-        let ud = NSUserDefaults::standardUserDefaults();
-        let k = NSString::from_str(key);
-        let val: Option<Retained<NSString>> = msg_send![&ud, stringForKey: &*k];
-        val.map(|s| s.to_string())
-    }
-}
-
-fn load_pref_float(key: &str) -> f32 {
-    unsafe {
-        let ud = NSUserDefaults::standardUserDefaults();
-        let k = NSString::from_str(key);
-        let value: f32 = msg_send![&ud, floatForKey: &*k];
-        if key == "audio_volume" {
-            crate::pref::normalize_volume_percent(value).0
-        } else {
-            value
         }
     }
 }

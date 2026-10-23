@@ -13,3 +13,7 @@ Tickeys Redux.app/
 # Hermes Agent
 .hermes/
 *.wav.bak
+
+# Python build/test caches
+__pycache__/
+*.pyc

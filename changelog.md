@@ -1,3 +1,17 @@
+## 1.0.8 — source complete, not yet published
+
+- Recheck Input Monitoring at launch, activation, opening Preferences, wake and event-tap invalidation. Defer failed-tap rebuilding to the main thread; limit the system permission request to once per launch and keep Preferences usable.
+- Share menu/Preferences state, use the engine's `0.25x–2.0x` pitch range, show fractional volume and scheme display names, and add audio/input status plus independent Test Sound.
+- Separate latest settings from the bounded key queue, decode schemes on the audio worker, share PCM storage, and discard superseded requests and stale events.
+- Preserve ambiguous unversioned low volume values as percentages and record the preference format version.
+- Localize About and all five links; prefer bundled LICENSE and THIRD_PARTY_NOTICES for offline access.
+- Replace **32 WAVs in five undocumented packs** with reproducible original synthesis. Retain 21 licensed Bubble/Mechanical/Drum recordings. Preserve scheme IDs and key maps; use Synth Click/Thock/Space/Blades/Typewriter names instead of implying original Cherry or film recordings.
+- Bundle complete audio credits, 46 target-resolved dependency inventories with 103 license/notice files, and Rust runtime licenses from the build toolchain.
+- Give each local release/debug build a fresh output directory. Official packaging requires a clean tree and annotated version tag at HEAD, pins the original certificate's SHA-1/SHA-256, verifies resources and ZIP/DMG contents, and refuses to replace existing artifacts.
+- Align Base/en/zh-Hans localization and build metadata; add stable/MSRV CI, input-recovery policy regression coverage, Python release-policy tests and generated-resource checks.
+
+The source version is 1.0.8. Official signing and publication have not been performed and require the maintainer's original signing Mac. Physical permission/keyboard/sleep-wake acceptance remains pending; asynchronous audio-device changes remain a disclosed limitation. See [release notes](docs/release-v1.0.8.md) and the [verification record](docs/development-audio-settings.md) for execution status.
+
 ## 1.0.7 (2026-09-01)
 
 - Force-load ServiceManagement and repair Start at Login state handling, NSError propagation, approval guidance, and UI rollback

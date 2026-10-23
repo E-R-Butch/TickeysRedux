@@ -67,6 +67,7 @@ unsafe extern "system" {
         port: CFMachPortRef,
         order: CFIndex,
     ) -> CFRunLoopSourceRef;
+    pub fn CFMachPortInvalidate(port: CFMachPortRef);
 
     pub fn CFRunLoopAddSource(rl: CFRunLoopRef, source: CFRunLoopSourceRef, mode: CFStringRef);
     pub fn CFRunLoopRemoveSource(rl: CFRunLoopRef, source: CFRunLoopSourceRef, mode: CFStringRef);

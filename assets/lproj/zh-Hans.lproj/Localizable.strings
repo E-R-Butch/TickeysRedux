@@ -7,6 +7,15 @@
 "sound_scheme" = "音效方案";
 "volume" = "音量";
 "pitch" = "音调";
+"test_sound" = "测试声音";
+"test_sound_hint" = "按当前音量和音调播放，无需输入监控权限。";
+"audio_loading" = "音频：正在加载音效方案…";
+"audio_starting" = "音频：正在启动输出…";
+"audio_ready" = "音频：已就绪";
+"audio_retrying" = "音频：输出不可用，正在重试…";
+"audio_scheme_failed" = "音频：无法加载音效方案";
+"input_ready" = "键盘监听：运行中";
+"input_unavailable" = "键盘监听：不可用";
 "preferences" = "偏好设置…";
 "quit_tickeys" = "退出 Tickeys Redux";
 
@@ -40,13 +49,13 @@
 
 /* Scheme names */
 "bubble" = "泡泡";
-"typewriter" = "打字机";
+"typewriter" = "合成打字机";
 "mechanical" = "机械键盘";
-"sword" = "刀剑";
+"sword" = "合成刀剑";
 "drum" = "架子鼓";
-"Cherry_G80_3000" = "樱桃 G80-3000";
-"Cherry_G80_3494" = "樱桃 G80-3494";
-"starwars" = "星球大战";
+"Cherry_G80_3000" = "合成脆响";
+"Cherry_G80_3494" = "合成闷响";
+"starwars" = "合成太空";
 
 /* Console */
 "launching" = "Tickeys Redux 启动中…";
@@ -57,3 +66,22 @@
 "permission_message" = "启用「输入监控」之前，Tickeys Redux 无法检测按键或播放按键音效。\n\n请前往「系统设置 → 隐私与安全性 → 输入监控」，添加或启用 Tickeys Redux。返回并再次打开 Tickeys Redux；权限生效后即可恢复按键音效。若仍无声，请完全退出 Tickeys Redux 后重新打开。\n\n升级 Tickeys Redux 后，macOS 可能仍保留上一版本的条目。如果授权仍未生效，请移除旧的 Tickeys Redux 条目，重新添加当前应用并启用。";
 "open_input_monitoring_settings" = "打开「输入监控」设置";
 "permission_not_now" = "暂不设置";
+
+/* About and permissions controls */
+"input_settings" = "输入监控设置…";
+"input_permission_hint" = "请在“系统设置 → 隐私与安全性 → 输入监控”中启用 Tickeys Redux。";
+"about_description" = "机械键盘音效模拟工具，让每次击键都有声音。";
+"about_original_author" = "原作者";
+"about_original_link" = "yingDev（应元东）";
+"about_redux_author" = "Redux 维护者";
+"about_redux_link" = "Sinclair Liu · Tickeys Redux";
+"about_updates" = "版本更新";
+"about_releases_link" = "查看发布版本";
+"about_license" = "项目许可证";
+"about_license_link" = "MIT 许可证";
+"about_third_party" = "第三方致谢";
+"about_third_party_link" = "许可证与声明";
+"about_local_document_hint" = "打开随应用附带的文档；若文件缺失，则打开项目仓库中的对应页面。";
+"about_built_with" = "使用 Rust · objc2 · rodio 构建\n基于 yingDev 的 macOS 版 Tickeys。";
+"about_link_error_title" = "无法打开链接";
+"about_link_error_message" = "macOS 无法打开此文档或网页。请检查默认浏览器及文档查看应用，然后重试。";
