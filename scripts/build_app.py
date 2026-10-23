@@ -53,6 +53,10 @@ def build_app(official=False, debug=False):
     if official and debug:
         raise ValueError("official builds cannot use the debug profile")
     run("python3", "scripts/generate_audio_assets.py", "--check")
+    # Notice verification deliberately stays offline. Prepare its locked source
+    # cache first so the documented packaging entrypoint also works on a clean
+    # machine, without relying on an earlier cargo build or CI fetch step.
+    run("cargo", "fetch", "--locked")
     run("python3", "scripts/generate_notices.py", "--check")
     environment = os.environ.copy()
     environment["MACOSX_DEPLOYMENT_TARGET"] = "13.0"

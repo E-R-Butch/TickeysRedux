@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -11,6 +12,70 @@ from urllib.parse import urlsplit
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import build_app
 from release_policy import verify_bundle_metadata
+
+
+class DependencyPreparationTests(unittest.TestCase):
+    def run_until_build(self, official=False, debug=False, failure=None):
+        commands = []
+        fetched = False
+        stamp = {"version": "1.0.8", "commit": "a" * 40, "dirty": False}
+
+        class BuildReached(Exception):
+            pass
+
+        def run(*args, **kwargs):
+            nonlocal fetched
+            commands.append(args)
+            if args == ("cargo", "fetch", "--locked"):
+                if failure == "fetch":
+                    raise subprocess.CalledProcessError(101, args)
+                fetched = True
+            elif args == ("python3", "scripts/generate_notices.py", "--check"):
+                # The notice generator uses offline, locked Cargo metadata.
+                # Model a fresh Cargo cache rather than CI's pre-fetched cache.
+                if not fetched:
+                    self.fail("offline notice verification ran before locked dependency fetch")
+                if failure == "notices":
+                    raise subprocess.CalledProcessError(1, args)
+            elif args[:2] == ("cargo", "build"):
+                raise BuildReached
+            elif args[0] == "codesign":
+                self.fail("preparation tests must never reach signing")
+
+        with patch.object(build_app, "source_stamp", return_value=stamp), \
+                patch.object(build_app, "release_source", return_value=stamp), \
+                patch.object(build_app, "run", side_effect=run), \
+                patch.dict(os.environ, {}, clear=True):
+            expected = subprocess.CalledProcessError if failure else BuildReached
+            with self.assertRaises(expected):
+                build_app.build_app(official=official, debug=debug)
+        return commands
+
+    def test_cold_cache_fetches_locked_sources_before_offline_notices_and_build(self):
+        for official, debug in ((False, False), (False, True), (True, False)):
+            with self.subTest(official=official, debug=debug):
+                commands = self.run_until_build(official, debug)
+                self.assertEqual(commands[:3], [
+                    ("python3", "scripts/generate_audio_assets.py", "--check"),
+                    ("cargo", "fetch", "--locked"),
+                    ("python3", "scripts/generate_notices.py", "--check"),
+                ])
+                self.assertEqual(commands[3][:3], ("cargo", "build", "--locked"))
+                self.assertEqual(len(commands), 4)
+
+    def test_fetch_failure_stops_before_notice_verification_build_or_signing(self):
+        for official in (False, True):
+            with self.subTest(official=official):
+                commands = self.run_until_build(official=official, failure="fetch")
+                self.assertEqual(commands[-1], ("cargo", "fetch", "--locked"))
+                self.assertEqual(len(commands), 2)
+
+    def test_notice_failure_stops_before_build_or_signing(self):
+        for official in (False, True):
+            with self.subTest(official=official):
+                commands = self.run_until_build(official=official, failure="notices")
+                self.assertEqual(commands[-1], ("python3", "scripts/generate_notices.py", "--check"))
+                self.assertEqual(len(commands), 3)
 
 
 class BundledAudioNotesTests(unittest.TestCase):
