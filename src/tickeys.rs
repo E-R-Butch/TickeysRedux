@@ -588,6 +588,80 @@ mod tests {
         (tickeys, channels, player, rx)
     }
 
+    fn with_wav_fixture(
+        format: u16,
+        rate: u32,
+        bits: u16,
+        declared: u32,
+        data: &[u8],
+        test: impl FnOnce(&Path),
+    ) {
+        use std::io::Write;
+        static NEXT_FIXTURE: AtomicUsize = AtomicUsize::new(0);
+        let path = std::env::temp_dir().join(format!(
+            "tickeys-wav-{}-{}.wav",
+            std::process::id(),
+            NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed)
+        ));
+        struct Cleanup(std::path::PathBuf);
+        impl Drop for Cleanup {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_file(&self.0);
+            }
+        }
+        let _cleanup = Cleanup(path.clone());
+        let mut file = File::create(&path).unwrap();
+        file.write_all(b"RIFF").unwrap();
+        file.write_all(&(36 + declared).to_le_bytes()).unwrap();
+        file.write_all(b"WAVEfmt ").unwrap();
+        file.write_all(&16_u32.to_le_bytes()).unwrap();
+        file.write_all(&format.to_le_bytes()).unwrap();
+        file.write_all(&1_u16.to_le_bytes()).unwrap();
+        file.write_all(&rate.to_le_bytes()).unwrap();
+        file.write_all(&(rate * u32::from(bits / 8)).to_le_bytes()).unwrap();
+        file.write_all(&(bits / 8).to_le_bytes()).unwrap();
+        file.write_all(&bits.to_le_bytes()).unwrap();
+        file.write_all(b"data").unwrap();
+        file.write_all(&declared.to_le_bytes()).unwrap();
+        file.write_all(data).unwrap();
+        drop(file);
+        test(&path);
+    }
+
+    #[test]
+    fn truncated_wav_samples_are_errors_not_silent_padding() {
+        with_wav_fixture(1, 44_100, 16, 4, &[0, 64], |path| {
+            assert!(
+                AudioData::from_file(path).is_err(),
+                "truncated PCM must be rejected"
+            );
+        });
+    }
+
+    #[test]
+    fn zero_sample_rate_is_rejected_without_panicking() {
+        with_wav_fixture(1, 0, 16, 2, &[0, 64], |path| {
+            let result = std::panic::catch_unwind(|| AudioData::from_file(path));
+            assert!(
+                result.is_ok(),
+                "invalid WAV metadata must not panic the audio worker"
+            );
+            assert!(result.unwrap().is_err());
+        });
+    }
+
+    #[test]
+    fn nonfinite_float_wav_samples_are_rejected_before_conversion() {
+        for value in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            with_wav_fixture(3, 44_100, 32, 4, &value.to_le_bytes(), |path| {
+                assert!(
+                    AudioData::from_file(path).is_err(),
+                    "nonfinite PCM must be rejected"
+                );
+            });
+        }
+    }
+
     #[test]
     fn every_bundled_wav_decodes_and_manifest_is_valid() {
         let mut names = HashSet::new();
